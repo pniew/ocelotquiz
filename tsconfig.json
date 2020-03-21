@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "target": "es6",
+        "noImplicitAny": false,
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "isolatedModules": false,
+        "outDir": "build",
+        "baseUrl": ".",
+        "paths": {
+            "*": [
+                "*",
+                "node_modules/*",
+                "src/*"
+            ]
+        },
+        "plugins": [
+            {
+                "transform": "@zerollup/ts-transform-paths"
+            }
+        ]
+    },
+    "include": [
+        "**/*"
+    ],
+    "exclude": [
+        "node_modules/*",
+        "build/*"
+    ]
+}
