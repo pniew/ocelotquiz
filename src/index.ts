@@ -4,9 +4,13 @@ import exphbs from 'express-handlebars';
 import methodOverride from 'method-override';
 import session from 'express-session';
 import path from 'path';
+import helpers from 'common/helpers';
 import indexController from 'controllers/indexController';
 import profileController from 'controllers/profileController';
+import questionController from 'controllers/questionController';
+import settingsController from 'controllers/settingsController';
 import pool from 'common/database';
+import settingsCache from 'common/settingsCache';
 
 // const MySQLStore = mysqlSession(session);
 var MySQLStore = require('express-mysql-session')(session);
@@ -15,6 +19,7 @@ const port = process.env.SERVER_PORT;
 const app = express();
 
 app.engine('handlebars', exphbs({
+    helpers
 }));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'handlebars');
@@ -44,6 +49,8 @@ app.use(session({
 app.get('/', indexController.index);
 app.get('/main', indexController.main);
 app.get('/login', profileController.login);
+app.post('/login', profileController.auth);
+app.get('/logout', profileController.logout);
 
 app.use((req, res, next) => {
     if (req.session.loggedIn) {
@@ -54,4 +61,18 @@ app.use((req, res, next) => {
 });
 
 app.get('/profile', profileController.index);
+app.get('/questions', questionController.index);
+app.get('/question/create', questionController.create);
+app.post('/question', questionController.store);
+app.get('/question/:id', questionController.edit);
+app.post('/question/:id', questionController.update);
+app.delete('/question/:id', questionController.destroy);
 
+app.get('/settings', settingsController.index);
+app.post('/settings', settingsController.update);
+
+settingsCache.init().then(() => {
+    app.listen(port, () => {
+        console.log(`Server started at http://localhost:${port}`);
+    });
+});

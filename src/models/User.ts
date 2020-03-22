@@ -4,6 +4,7 @@ import { format } from 'mysql2';
 export interface User {
     id: number;
     email: string;
+    activationToken: string;
     username: string;
     password: string;
 }

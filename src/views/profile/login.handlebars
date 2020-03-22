@@ -1,0 +1,30 @@
+<div class='mx-auto small-container'>
+    <form action="/login" method="POST" class="mb-0 mt-5">
+        <div class="input-group">
+            <div class="input-group-prepend">
+                <div class="input-group-text icon">
+                    <i class="fa fa-user"></i>
+                </div>
+            </div>
+            <input type="text" class="form-control {{#if errors.username}}is-invalid{{/if}}" name="username"
+                placeholder="Username" required value="{{errors.previousBody.username}}">
+        </div>
+        {{#if errors.username}}
+        <small class="text-danger">{{errors.username.message}}</small>
+        {{/if}}
+        <div class="input-group mt-3">
+            <div class="input-group-prepend">
+                <div class="input-group-text icon">
+                    <i class="fa fa-lock"></i>
+                </div>
+            </div>
+            <input type="password" class="form-control {{#if errors.password}}is-invalid{{/if}}" name="password"
+                placeholder="Password" required>
+        </div>
+        {{#if errors.password}}
+        <small class="text-danger">{{errors.password.message}}</small>
+        {{/if}}
+        <small><a class="pull-right mt-1" href="#">Przypomnij hasło</a></small>
+        <button type="submit" class="btn btn-primary btn-block my-5">Zaloguj</button>
+    </form>
+</div>
