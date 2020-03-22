@@ -1,4 +1,8 @@
-
+<form action="/question/{{question.id}}?_method=DELETE" method="POST" class="m-0 pull-right">
+    <button class="btn btn-danger mb-2" type="submit" name="action">
+        <i class="fa fa-trash"></i>
+    </button>
+</form>
 <form action="/question/{{question.id}}" method="post" class="m-0">
     <div class="form-group mb-3">
         <label for="questionTextarea">Treść pytania:</label>
