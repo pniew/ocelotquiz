@@ -1,0 +1,39 @@
+<div class="accordion">
+    {{#each data}}
+    <li class="card">
+        <div class="card-header">
+            <span>{{this.text}}</span>
+            <div class="btn-group" style="float: right;">
+                <a href="javascript:void(0);" class="btn btn-primary collapser">
+                    <i class="fa fa-chevron-down"></i>
+                </a>
+                <a href="/question/{{this.id}}" class="btn btn-primary">
+                    <i class="fa fa-edit"></i>
+                </a>
+            </div>
+        </div>
+        <div class="collapse">
+            <div class="card-body">
+                {{#each this.answers}}
+                <div>
+                    <span style="display: inline-block; width: 20px">
+                        {{#if this.correct}}
+                        <i class="fa fa-check"></i>
+                        {{else}}
+                        <i class="fa fa-close"></i>
+                        {{/if}}
+                    </span>
+                    <span>{{this.text}}</span>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </li>
+    {{/each}}
+</div>
+<script>
+    $('.collapser').click(function () {
+        $('.collapse').collapse('hide');
+        $(this).parents('.card-header').next().collapse('toggle');
+    });
+</script>
