@@ -1,0 +1,43 @@
+
+<form action="/question/{{question.id}}" method="post" class="m-0">
+    <div class="form-group mb-3">
+        <label for="questionTextarea">Treść pytania:</label>
+        <textarea class="form-control" required id="questionTextarea" rows="3" maxlength="{{maxQuestionLength}}"
+            name="question[text]">{{question.text}}</textarea>
+        <span class="character-count pull-right badge badge-dark" id="count_message"></span>
+    </div>
+    <label>Odpowiedzi:</label>
+    {{#each answers}}
+    <div class="input-group mb-1">
+        <input type="hidden" name="answer[{{this.id}}][id]" value="{{this.id}}" />
+        <input type="text" class="form-control" required name="answer[{{this.id}}][text]" value="{{this.text}}"
+            aria-label="Treść odpowiedzi" maxlength="{{maxQuestionLength}}" />
+        <div class="input-group-append">
+            <div class="input-group-text">
+                <input type="checkbox" aria-label="Poprawna?" title="Czy poprawna?" data-toggle="tooltip"
+                    data-placement="left" name="answer[{{this.id}}][correct]" value="1"
+                    {{#if this.correct}}checked{{/if}} />
+            </div>
+        </div>
+    </div>
+    {{/each}}
+    <button class="btn btn-primary btn-block mt-2" type="submit" name="action">Zapisz pytanie</button>
+</form>
+<script>
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+    })
+
+    var text_max = {{maxQuestionLength}};
+    var text_length = $('#questionTextarea').val().length;
+    var text_remaining = text_max - text_length;
+
+    $('#count_message').html(text_length + ' / ' + text_max);
+
+    $('#questionTextarea').keyup(function () {
+        var text_length = $('#questionTextarea').val().length;
+        var text_remaining = text_max - text_length;
+
+        $('#count_message').html(text_length + ' / ' + text_max);
+    });
+</script>

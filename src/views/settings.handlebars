@@ -1,0 +1,47 @@
+<form id="settingsForm" class="mb-5" method="POST">
+    <table class="table table-sm mb-2">
+        <thead>
+            <tr style="background: #f3f3f3;">
+                <th scope="col">Nazwa</th>
+                <th scope="col">Klucz</th>
+                <th scope="col">Wartość</th>
+                <th scope="col">Poprzednia wartość</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each appSettings}}
+            <tr>
+                <td class="align-middle">
+                    <span>{{this.description}}</span>
+                </td>
+                <td class="align-middle">
+                    <var>{{this.key}}</var>
+                    <input type="hidden" name="data[{{@index}}][key]" value="{{this.key}}">
+                </td>
+                <td>
+                    <div class="input-group input-group-sm w-75 p-1">
+                        <input type="text" class="form-control" name="data[{{@index}}][value]" value="{{this.value}}"
+                            data-prev-value="{{this.value}}" data-key="{{this.key}}">
+                    </div>
+                </td>
+                <td class="align-middle">
+                    <var class="text-muted">{{this.value}}</var>
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    <button class="float-right btn btn-primary" type="submit">Zapisz</button>
+</form>
+<script>
+    document.querySelector('#settingsForm').addEventListener('submit', (e) => {
+        const inputs = document.querySelectorAll('input.form-control');
+        for (const input of inputs) {
+            if (input.value === input.getAttribute('data-prev-value')) {
+                input.setAttribute('disabled', true);
+                document.querySelector(`input[value='${input.getAttribute('data-key')}']`)
+                    .setAttribute('disabled', true);
+            }
+        }
+    });
+</script>

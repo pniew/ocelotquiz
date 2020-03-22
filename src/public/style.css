@@ -1,0 +1,56 @@
+body::before {
+    position        : fixed;
+    content         : "";
+    top             : -15;
+    left            : -15;
+    bottom          : -15;
+    right           : -15;
+    display         : block;
+    background-image: url('/img/kaczuchy.jpg');
+    z-index         : -999;
+}
+
+.ocelot-cover {
+    max-width: 100%;
+    max-height: 50vh;
+}
+
+.ocelot-cover-small {
+    max-width: 100%;
+    max-height: 33vh;
+}
+
+.stick-right {
+    right: 0;
+}
+
+h1 {
+    margin: 10px 25px 25px 50px;
+}
+
+.framed-section {
+    margin-top: 50px;
+    padding   : 15px;
+    background: white;
+}
+
+.icon {
+    width: 38px;
+}
+
+.small-container {
+    max-width: 500px;
+}
+
+#questionTextarea {
+    min-height: 37.5px;
+}
+
+.character-count {
+    position      : relative;
+    pointer-events: none;
+    z-index       : 10;
+    opacity       : 0.6;
+    margin-top    : -25px;
+    margin-right  : 5px;
+}
