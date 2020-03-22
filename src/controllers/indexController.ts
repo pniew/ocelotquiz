@@ -7,9 +7,9 @@ export default {
         if (req.session.loggedIn) {
             const user = await User.getById(req.session.userid);
             const emailHash = crypto.createHash('md5').update(user.email.trim().toLowerCase()).digest('hex');
-            res.render('index', { hideFrame: true, hideNavbar: true, hideFooter: true, loggedIn: true, user: user, emailHash });
+            res.render('index', { hideFrame: false, hideNavbar: false, hideFooter: true, loggedIn: true, user: user, emailHash });
         } else {
-            res.render('index', { hideFrame: true, hideNavbar: true, hideFooter: true });
+            res.render('index', { hideFrame: false, hideNavbar: true, hideFooter: true });
         }
     },
 

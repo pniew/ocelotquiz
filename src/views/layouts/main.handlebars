@@ -21,14 +21,14 @@
 </head>
 
 <body>
-    {{#unless hideNavbar}}
-    {{> navbar}}
-    {{/unless}}
     <div class="container">
         {{#if hideFrame}}
         {{{body}}}
         {{else}}
-        <div class="rounded framed-section border">
+        <div class="rounded framed-section border pt-0">
+            {{#unless hideNavbar}}
+            {{> navbar}}
+            {{/unless}}
             <h1>{{title}}</h1>
             {{{body}}}
         </div>

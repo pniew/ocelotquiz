@@ -1,27 +1,24 @@
-<div class="jumbotron m-0 mt-3">
-    <div class="text-center position-relative">
+<div class="text-center position-relative">
+    {{#if loggedIn}}
+    <div class="position-absolute stick-right">
+        Witaj, <a href="/profile">{{user.username}}</a>
+        <img class="rounded-circle" src="https://www.gravatar.com/avatar/{{emailHash}}?s=64" crossorigin="anonymous" />
+    </div>
+    {{/if}}
+    <img class="ocelot-cover{{#if loggedIn}}-small{{/if}}" src="/img/ocelot.png" />
+    <div class="w-50 mt-5 mx-auto">
+        <h1 class="display-4 mx-3 mt-3">Ocelot Quiz</h1>
         {{#if loggedIn}}
-        <div class="position-absolute stick-right">
-            Witaj, <a href="/profile">{{user.username}}</a>
-            <img class="rounded-circle" src="https://www.gravatar.com/avatar/{{emailHash}}?s=64"
-                crossorigin="anonymous" />
-        </div>
+        <p class="lead">
+            <a class="btn btn-primary btn-lg btn-block text-uppercase" href="#" role="button">Quiz</a>
+        </p>
+        {{else}}
+        <p class="lead">
+            <a class="btn btn-primary btn-lg btn-block" href="/login" role="button">Zaloguj się</a>
+        </p>
+        <p class="lead">
+            <a class="btn btn-primary btn-lg btn-block" href="/register" role="button">Rejestracja</a>
+        </p>
         {{/if}}
-        <img class="ocelot-cover{{#if loggedIn}}-small{{/if}}" src="/img/ocelot.png" />
-        <div class="w-50 mt-5 mx-auto">
-            <h1 class="display-4 mx-3 mt-3">Ocelot Quiz</h1>
-            {{#if loggedIn}}
-            <p class="lead">
-                <a class="btn btn-primary btn-lg btn-block text-uppercase" href="#" role="button">Quiz</a>
-            </p>
-            {{else}}
-            <p class="lead">
-                <a class="btn btn-primary btn-lg btn-block" href="/login" role="button">Zaloguj się</a>
-            </p>
-            <p class="lead">
-                <a class="btn btn-primary btn-lg btn-block" href="/register" role="button">Rejestracja</a>
-            </p>
-            {{/if}}
-        </div>
     </div>
 </div>
