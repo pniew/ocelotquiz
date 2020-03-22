@@ -50,7 +50,10 @@ app.get('/', indexController.index);
 app.get('/main', indexController.main);
 app.get('/login', profileController.login);
 app.post('/login', profileController.auth);
+app.get('/register', profileController.create);
+app.post('/register', profileController.store);
 app.get('/logout', profileController.logout);
+app.get('/activate/:username/:token', profileController.activate);
 
 app.use((req, res, next) => {
     if (req.session.loggedIn) {

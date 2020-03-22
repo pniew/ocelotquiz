@@ -1,0 +1,54 @@
+<div class='mx-auto small-container'>
+    <form action="/register" method="POST" class="mb-0 mt-5">
+        <div class="form-group">
+            <label for="username">Nazwa użytkownika</label>
+            <input type="text" class="form-control {{#if errors.username}}is-invalid{{/if}}" name="username"
+                placeholder="Username" id="username" required value="{{errors.previousBody.username}}">
+            {{#if errors.username}}
+            <small class="text-danger">{{errors.username.message}}</small>
+            {{/if}}
+        </div>
+        <div class="form-group mt-3">
+            <label for="email">Email</label>
+            <input type="email" class="form-control {{#if errors.email}}is-invalid{{/if}}" name="email"
+                placeholder="Email" id="email" required value="{{errors.previousBody.email}}">
+            {{#if errors.email}}
+            <small class=" text-danger">{{errors.email.message}}</small>
+            {{/if}}
+        </div>
+        <div class="form-group mt-3">
+            <label for="email">Hasło</label>
+            <input type="password" class="form-control{{#if errors.password}}is-invalid{{/if}}" name="password"
+                id="password" placeholder="Password" minlength="{{requiredPasswordLength}}" required>
+            {{#if errors.password}}
+            <small class="text-danger">{{errors.password.message}}</small>
+            {{/if}}
+        </div>
+        <div class="form-group mt-3">
+            <label for="confirmPassword">Potwierdź hasło</label>
+            <input type="password" class="form-control" name="confirmPassword" id="confirmPassword"
+                placeholder="Password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block my-5 disabled">Zarejestruj</button>
+    </form>
+</div>
+<script>
+    $(function () {
+        $("#password, #confirmPassword").keyup(function () {
+            if ($("#password").val() != $("#confirmPassword").val()) {
+                $("#confirmPassword").removeClass('is-valid').addClass('is-invalid');
+                $("button[type='submit']").addClass('disabled');
+            } else {
+                $("#confirmPassword").removeClass('is-invalid').addClass('is-valid');
+                $("button[type='submit']").removeClass('disabled');
+            }
+        });
+    });
+
+    $("form").submit(function (e) {
+        if ($("#password").val() != $("#confirmPassword").val()) {
+            e.preventDefault();
+            return false;
+        }
+    }); 
+</script>
