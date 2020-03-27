@@ -14,13 +14,13 @@
     <label>Odpowiedzi:</label>
     {{#each answers}}
     <div class="input-group mb-1">
-        <input type="hidden" name="answer[{{this.id}}][id]" value="{{this.id}}" />
-        <input type="text" class="form-control" required name="answer[{{this.id}}][text]" value="{{this.text}}"
+        <input type="hidden" name="answer[{{@index}}][id]" value="{{this.id}}" />
+        <input type="text" class="form-control" required name="answer[{{@index}}][text]" value="{{this.text}}"
             aria-label="Treść odpowiedzi" maxlength="{{../maxQuestionLength}}" />
         <div class="input-group-append">
             <div class="input-group-text">
                 <input type="checkbox" aria-label="Poprawna?" title="Czy poprawna?" data-toggle="tooltip"
-                    data-placement="left" name="answer[{{this.id}}][correct]" value="1"
+                    data-placement="left" name="answer[{{@index}}][correct]" value="1"
                     {{#if this.correct}}checked{{/if}} />
             </div>
         </div>
