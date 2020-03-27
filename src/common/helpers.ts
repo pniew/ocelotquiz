@@ -5,5 +5,11 @@ export default {
             accum += block.fn(i);
         }
         return accum;
+    },
+
+    check: (x: Number, y: Number, block: any) => {
+        if(x === y) {
+            return block.fn();
+        }
     }
 };

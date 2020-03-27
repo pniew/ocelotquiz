@@ -14,7 +14,8 @@
             "*": [
                 "*",
                 "node_modules/*",
-                "src/*"
+                "src/*",
+                "tests/*"
             ]
         },
         "plugins": [

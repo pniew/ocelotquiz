@@ -26,6 +26,14 @@
         </div>
     </div>
     {{/each}}
+    <div class="form-group">
+         <label for="exampleFormControlSelect1">Kategoria</label>
+        <select class="form-control custom-select" name="category" id="exampleFormControlSelect1">
+        {{#each categories}}
+            <option value="{{this.id}}"{{#check this.id ../selected}} selected{{/check}}>{{this.name}}</option>
+        {{/each}}
+        </select>
+    </div>    
     <button class="btn btn-primary btn-block mt-2" type="submit" name="action">Zapisz pytanie</button>
 </form>
 

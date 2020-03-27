@@ -1,0 +1,8 @@
+<pre>
+{{#each categories}}
+    {{this.name}} => {{this.description}}
+    {{#each this.subcategories}}
+    + {{this.name}} => {{this.description}}
+    {{/each}}
+{{/each}}
+</pre>

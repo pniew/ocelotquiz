@@ -9,6 +9,8 @@ import indexController from 'controllers/indexController';
 import profileController from 'controllers/profileController';
 import questionController from 'controllers/questionController';
 import settingsController from 'controllers/settingsController';
+import categoriesController from 'controllers/categoriesController';
+
 import pool from 'common/database';
 import settingsCache from 'common/settingsCache';
 
@@ -70,6 +72,9 @@ app.post('/question', questionController.store);
 app.get('/question/:id', questionController.edit);
 app.post('/question/:id', questionController.update);
 app.delete('/question/:id', questionController.destroy);
+
+app.get('/categories', categoriesController.index);
+// app.post('/categories, categoriesController.update); // TODO!
 
 app.get('/settings', settingsController.index);
 app.post('/settings', settingsController.update);
