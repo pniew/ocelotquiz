@@ -3,7 +3,7 @@ import express from 'express';
 import { createCryptoString } from 'common/utils';
 import transporter from 'common/nodemailer';
 import settingsCache from 'common/settingsCache';
-import User from 'models/User';
+import UserModel from 'models/UserModel';
 
 const EMAIL_REGEXP = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
@@ -41,7 +41,7 @@ const redirectWithError = (req: express.Request, res: express.Response, key: str
 export default {
     // aktualnie lista wszystkich userów bo tak
     index: async (req: express.Request, res: express.Response) => {
-        const user = await User.getById(req.session.userid);
+        const user = await UserModel.getById(req.session.userid);
         res.render('profile/index', { title: 'Użytkownicy', user });
     },
 
@@ -73,7 +73,7 @@ export default {
             return redirectWithError(req, res, 'email', 'Podany adres email jest nieprawidłowy!', '/register');
         }
 
-        const user = await User.getByName('req.body.username');
+        const user = await UserModel.getByName('req.body.username');
         if (user) {
             return redirectWithError(req, res, 'username', 'Podany login zajęty!', '/register');
         }
@@ -83,7 +83,7 @@ export default {
         const hashedToken = await bcrypt.hash(token, 10);
         const timestamp = new Date().getTime();
 
-        const userid = await User.insert({
+        const userid = await UserModel.insert({
             username: req.body.username,
             email: req.body.email,
             activationToken: `${timestamp}:${hashedToken}`,
@@ -115,7 +115,7 @@ export default {
 
     // logowanie z DB
     auth: async (req: express.Request, res: express.Response) => {
-        const user = await User.getByName(req.body.username);
+        const user = await UserModel.getByName(req.body.username);
         if (!user) {
             return redirectWithError(req, res, 'username', 'Nie znaleziono użytkownika o takiej nazwie!', '/login');
         }
@@ -129,7 +129,7 @@ export default {
     },
 
     activate: async (req: express.Request, res: express.Response) => {
-        const user = await User.getByName(req.params.username);
+        const user = await UserModel.getByName(req.params.username);
         if (!user) {
             return res.render('error', { error: { message: 'Nie znaleziono użytkownika o takiej nazwie!' } });
         }
@@ -143,7 +143,7 @@ export default {
             return res.render('error', { error: { message: 'Token wygasł!' } });
         }
 
-        User.editById(user.id, { status: '1' });
+        UserModel.editById(user.id, { status: '1' });
         res.redirect('/');
     },
 
