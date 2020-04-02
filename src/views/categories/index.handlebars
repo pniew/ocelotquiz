@@ -1,8 +1,37 @@
-<pre>
+{{!-- <pre>
 {{#each categories}}
-    {{this.name}} => {{this.description}}
+    <a href="/category/{{this.id}}">{{this.name}}</a> => {{this.description}}
     {{#each this.subcategories}}
-    + {{this.name}} => {{this.description}}
+    + <a href="/category/{{this.id}}">{{this.name}}</a> => {{this.description}}
     {{/each}}
 {{/each}}
-</pre>
+</pre> --}}
+
+<table class="table table-sm mb-2">
+    <thead>
+        <tr style="background: #f3f3f3;">
+            <th scope="col">Nazwa</th>
+            <th scope="col">Opis</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="align-middle p-2 text-uppercase">
+                <a href="/category/0"><span>kategorie główne</span></a>
+            </td>
+            <td class="align-middle">
+                <var>Spis głównych kategorii.</var>
+            </td>
+        </tr>
+        {{#each allCategories}}
+        <tr>
+            <td class="align-middle p-2 text-uppercase">
+                <a href="/category/{{this.id}}"><span>{{this.name}}</span></a>
+            </td>
+            <td class="align-middle">
+                <var>{{this.description}}</var>
+            </td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>

@@ -1,0 +1,236 @@
+<div>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mt-3">
+            {{#each breadcrumbs}}
+            <li class="breadcrumb-item text-uppercase">
+                {{#if @last}}
+                {{this.name}}
+                {{else}}
+                <a href="/category/{{this.id}}">{{this.name}}</a>
+                {{/if}}
+            </li>
+            {{/each}}
+        </ol>
+    </nav>
+
+    <div class="pull-right mr-3">
+        {{#if hideModifyButtons}}
+        <a href="/categories" class="btn btn-primary">
+            <i class="fa fa-list-alt" data-toggle="tooltip" title="Index kategorii"></i>
+        </a>
+        {{/if}}
+        {{#unless hideModifyButtons}}
+        <div class="btn btn-primary" data-toggle="modal" data-target="#editCatModal">
+            <i class="fa fa-pencil" data-toggle="tooltip" title="Modyfikuj"></i>
+        </div>
+        <div class="btn btn-primary" data-toggle="modal" , data-target="#moveCatModal">
+            <i class="fa fa-share" data-toggle="tooltip" title="Przenieś"></i>
+        </div>
+        {{/unless}}
+        <button class="btn btn-primary" data-toggle="modal" data-target="#addNewCatModal">
+            <i class="fa fa-plus" data-toggle="tooltip" title="Dodaj kategorię podrzędną"></i>
+        </button>
+
+        {{#unless hideModifyButtons}}
+        <div class="btn btn-danger" data-toggle="modal" data-target="#deleteCatModal">
+            <i class="fa fa-trash" data-toggle="tooltip" title="Usuń"></i>
+        </div>
+        {{/unless}}
+    </div>
+
+    <div class="ml-3">
+        <h4 class="ml-1 text-uppercase">{{topCategory.name}}</h4>
+        <div class="">{{topCategory.description}}</div>
+    </div>
+
+    {{#if subCategories}}
+    <div class="mt-4 px-4">
+        <div class="mb-1 pull-right d-none oce-selected-toolbar">
+            <small>Zaznaczone:</small>
+            <div class="btn btn-primary" data-toggle="tooltip" title="Przenieś">
+                <i class="fa fa-share"></i>
+            </div>
+            <div class="btn btn-danger" data-toggle="tooltip" title="Usuń">
+                <i class="fa fa-trash"></i>
+            </div>
+        </div>
+        <div class="py-2 pull-left">
+            {{#if topMostLevel}}
+            <small>Kategorie główne:</small>
+            {{else}}
+            <small>Kategorie podrzędne:</small>
+            {{/if}}
+        </div>
+        <table class="table">
+            <tbody>
+                {{#each subCategories}}
+                <tr>
+                    <td class="text-uppercase">
+                        <a href="/category/{{this.id}}">{{this.name}}</a>
+                    </td>
+                    <td class="text-right p-2">
+                        <div class="custom-control custom-checkbox p-0">
+                            <input type="checkbox" name="{{this.id}}" class="custom-control-input oce-checkbox"
+                                id="check-{{@index}}">
+                            <label class="custom-control-label" for="check-{{@index}}"></label>
+                        </div>
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="addNewCatModal" tabindex="-1" role="dialog" aria-labelledby="addNewCatModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form action="/category" method="POST">
+                <input type="hidden" name="category[parent]" value="{{topCategory.id}}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addNewCatModalLabel">Dodaj kategorię podrzędną</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="categoryName">Nazwa kategorii</label>
+                        <input type="text" class="form-control text-uppercase" id="categoryName" placeholder="Kategoria"
+                            name="category[name]" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoryDescription">Opis</label>
+                        <textarea class="form-control" id="categoryDescription" rows="3"
+                            placeholder="Krótki opis kategorii" name="category[description]" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="reset" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
+                    <button type="submit" class="btn btn-primary">Dodaj</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="deleteCatModal" tabindex="-1" role="dialog" aria-labelledby="deleteCatModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCatModalLabel">Potwierdzenie usunięcia</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Czy na pewno chcesz usunąć wybraną kategorię? Kategorie podrzędnedne zostaną dodane do INNYCH.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
+                <form action="/category/{{topCategory.id}}?_method=DELETE" method="POST" class="m-0">
+                    <input type="hidden" name="parentId" value="{{topCategory.parent}}">
+                    <button type="submit" class="btn btn-danger" name="action">Usuń</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="moveCatModal" tabindex="-1" role="dialog" aria-labelledby="moveCatModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form action="/category/{{topCategory.id}}" method="POST" class="m-0">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="moveCatModalLabel">Przenoszenie kategorii</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="categoryName">Do jakiej kategorii chcesz przenieść wybraną kategorię?</label>
+                        <select class="form-control text-uppercase" name="category[parent]" required>
+                            <option value="0">Kategoria główna</option>
+                            {{#each allCategories}}
+                            <option value="{{this.id}}">{{this.name}}</option>
+                            {{/each}}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
+                    <button type="submit" class="btn btn-danger">Potwierź</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="editCatModal" tabindex="-1" role="dialog" aria-labelledby="editCatModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form action="/category/{{topCategory.id}}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editCatModalLabel">Edytuj kategorię</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="categoryName">Nazwa kategorii</label>
+                        <input type="text" class="form-control text-uppercase" id="categoryName" placeholder="Kategoria"
+                            value="{{topCategory.name}}" name="category[name]" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoryDescription">Opis</label>
+                        <textarea class="form-control" id="categoryDescription" rows="3"
+                            placeholder="Krótki opis kategorii" name="category[description]" required>{{topCategory.description}}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="reset" class="btn btn-secondary">Reset</button>
+                    <button type="reset" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
+                    <button type="submit" class="btn btn-primary">Zapisz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const selectedToolbar = document.querySelector('.oce-selected-toolbar');
+
+    document.querySelectorAll('.oce-checkbox')
+        .forEach(element => {
+            element.addEventListener('change', (event) => {
+                if (getChecked().length > 0) {
+                    showToolbar();
+                } else {
+                    hideToolbar();
+                }
+            });
+        });
+
+    function getChecked() {
+        return document.querySelectorAll('.oce-checkbox:checked');
+    }
+
+    function showToolbar() {
+        selectedToolbar.classList.remove('d-none');
+    }
+
+    function hideToolbar() {
+        selectedToolbar.classList.add('d-none');
+    }
+</script>

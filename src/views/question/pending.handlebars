@@ -6,12 +6,14 @@
                 <span class="badge badge-primary light m-1" data-toggle="tooltip"
                     title="{{this.category.description}}">{{this.category.name}}</span>
                 <div class="btn-group">
-                    <form action="/question/pending/{{this.id}}" method="POST" class="m-0">
-                        <button type="submit" class="btn fa {{this.status}}" name="action" data-toggle="tooltip" title="{{this.statusDescription}}"></button>
+                    <form action="/question/admin/pending/{{this.id}}" method="POST" class="m-1">
+                        <input type="hidden" name="action" value="accept">
+                        <button type="submit" class="btn btn-success" name="button">Zaakceptuj</button>
                     </form>
-                    <a href="/question/{{this.id}}" class="btn btn-primary">
-                        <i class="fa fa-edit"></i>
-                    </a>
+                    <form action="/question/admin/pending/{{this.id}}" method="POST" class="m-1">
+                        <input type="hidden" name="action" value="deny">
+                        <button type="submit" class="btn btn-danger" name="button">Odrzuć</button>
+                    </form>
                     <a href="javascript:void(0);" class="btn btn-primary collapser">
                         <i class="fa fa-chevron-down"></i>
                     </a>

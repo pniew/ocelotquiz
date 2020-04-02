@@ -1,4 +1,5 @@
 import express from 'express';
+import fileUpload from 'express-fileupload';
 import exphbs from 'express-handlebars';
 // import mysqlSession from 'express-mysql-session';
 import methodOverride from 'method-override';
@@ -66,15 +67,22 @@ app.use((req, res, next) => {
 });
 
 app.get('/profile', profileController.index);
+app.get('/questions/admin/pending', questionController.pendingIndex);
+app.post('/question/admin/pending/:id', questionController.pendingAction);
 app.get('/questions', questionController.index);
 app.get('/question/create', questionController.create);
-app.post('/question', questionController.store);
+app.get('/question/upload', questionController.upload);
+app.post('/question', fileUpload(), questionController.store);
+app.post('/question/pending/:id', questionController.pending);
 app.get('/question/:id', questionController.edit);
 app.post('/question/:id', questionController.update);
 app.delete('/question/:id', questionController.destroy);
 
 app.get('/categories', categoriesController.index);
-// app.post('/categories, categoriesController.update); // TODO!
+app.get('/category/:id?', categoriesController.edit);
+app.post('/category', categoriesController.create);
+app.post('/category/:id', categoriesController.update);
+app.delete('/category/:id', categoriesController.delete);
 
 app.get('/settings', settingsController.index);
 app.post('/settings', settingsController.update);
