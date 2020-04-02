@@ -1,0 +1,16 @@
+<form action="/question/" encType="multipart/form-data" method="post" class="m-0">
+    <div class="form-group">
+        <div class="custom-file">
+            <input type="file" class="custom-file-input" id="validatedCustomFile" name="spreadsheet" required>
+            <label class="custom-file-label" for="validatedCustomFile">Wybierz plik...</label>
+        </div>
+        
+        <label for="exampleFormControlSelect1">Kategoria</label>
+        <select class="form-control" name="category" id="exampleFormControlSelect1">
+        {{#each categories}}
+            <option value="{{this.id}}">{{this.name}}</option>
+        {{/each}}
+        </select>
+    </div>
+    <button class="btn btn-primary btn-block mt-2" type="submit" name="action">Dodaj pytanie</button>
+</form>

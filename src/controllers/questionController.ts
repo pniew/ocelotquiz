@@ -1,18 +1,50 @@
 import express from 'express';
-import Question from 'models/Question';
-import Answer from 'models/Answer';
-import Category from 'models/Category';
+import xlsx from 'xlsx';
+import QuestionModel from 'models/QuestionModel';
+import AnswerModel from 'models/AnswerModel';
+import CategoryModel from 'models/CategoryModel';
 import settingsCache from 'common/settingsCache';
+import fileUpload from 'express-fileupload';
 // TODO: perhaps fix or move parseInts
 
 export default {
     index: async (req: express.Request, res: express.Response) => {
-        const questions = await Question.getAll();
         const userid = req.session.userid;
-        const answers = await Answer.getByQuestionIdArray(questions.map(question => question.id));
-        const categories = await Category.getByIdArray(questions.map(questions => questions.category));
-      
-        const data = questions.filter(question => question.user === userid).map(question => {
+        const questions = await QuestionModel.getByUser(userid);
+        const answers = await AnswerModel.getByQuestionIdArray(questions.map(question => question.id));
+        const categories = await CategoryModel.getByIdArray([...new Set(questions.map(questions => questions.category))]);
+
+        const data = questions.map(question => {
+            const status = question.status === 'private' ? 'btn-secondary fa-circle' : question.status === 'pending' ? 'btn-warning fa-circle' : 'btn-success fa-check-circle';
+            const statusDescription = question.status === 'private' ? 'Pytanie prywatne' : question.status === 'pending' ? 'Oczekuje na akceptacje' : 'Pytanie publiczne';
+
+            return {
+                id: question.id,
+                user: question.user,
+                text: question.text,
+                status,
+                statusDescription,
+                category: categories.filter(category => category.id === question.category)[0],
+                answers: answers.filter(answer => answer.question === question.id)
+            };
+        });
+        res.render('question/index', { title: 'Pytania', data });
+    },
+
+    pending: async (req: express.Request, res: express.Response) => {
+        const question = await QuestionModel.getById(parseInt(req.params.id));
+        if (question.user !== req.session.userid) {
+            return res.status(404).send();
+        }
+        await QuestionModel.editById(parseInt(req.params.id), { status: 'pending' });
+        res.redirect('/questions/');
+    },
+
+    pendingIndex: async (req: express.Request, res: express.Response) => {
+        const questions = await QuestionModel.getByStatus('pending');
+        const answers = await AnswerModel.getByQuestionIdArray(questions.map(question => question.id));
+        const categories = await CategoryModel.getByIdArray([...new Set(questions.map(questions => questions.category))]);
+        const data = questions.map(question => {
             return {
                 id: question.id,
                 user: question.user,
@@ -21,45 +53,128 @@ export default {
                 answers: answers.filter(answer => answer.question === question.id)
             };
         });
-        res.render('question/index', { title: 'Pytania', data });
+        res.render('question/pending', { title: 'Oczekujące pytania', data });
+    },
+
+    pendingAction: async (req: express.Request, res: express.Response) => {
+        if (req.body.action === 'accept') {
+            await QuestionModel.editById(parseInt(req.params.id), { status: 'public' });
+        } else if (req.body.action === 'deny') {
+            await QuestionModel.editById(parseInt(req.params.id), { status: 'private' });
+        } else {
+            return res.status(500).send(); // no co ty robisz?
+        }
+        res.redirect('/questions/admin/pending');
     },
 
     create: async (req: express.Request, res: express.Response) => {
-        const categories = await Category.getAll();
+        const categories = (await CategoryModel.getAll()).map((cat) => {
+            return { ...cat, name: cat.name.toUpperCase() };
+        });
         const maxQuestionLength = settingsCache.get('max-question-length');
         const defaultAnswerAmount = settingsCache.get('default-answer-amount');
-        res.render('question/create', { title: 'Dodaj pytanie', defaultAnswerAmount, maxQuestionLength, categories });
+
+        const answers = [];
+        for (let i = 0; i < defaultAnswerAmount; i++) {
+            answers.push({});
+        }
+
+        const questionAdded = req.session.questionAddedId ? req.session.questionAddedId : 0;
+        delete req.session.questionAddedId;
+
+        res.render('question/createEdit', {
+            title: 'Dodaj pytanie',
+            defaultAnswerAmount,
+            maxQuestionLength,
+            questionAdded,
+            categories,
+            answers
+        });
+    },
+
+    upload: async (req: express.Request, res: express.Response) => {
+        const categories = await CategoryModel.getAll();
+        res.render('question/upload', { title: 'Dodaj pytanie z pliku .xlsx', categories });
     },
 
     edit: async (req: express.Request, res: express.Response) => {
-        const question = await Question.getById(parseInt(req.params.id));
+        const question = await QuestionModel.getById(parseInt(req.params.id));
         const userid = req.session.userid;
-        
+
         if (!question || question.user !== userid) {
             return res.status(404).send();
         }
 
-        const categories = await Category.getAll();
-        const answers = await Answer.getByQuestionId(parseInt(req.params.id));
+        const categories = (await CategoryModel.getAll()).map((cat) => {
+            return { ...cat, name: cat.name.toUpperCase() };
+        });
+
+        const answers = await AnswerModel.getByQuestionId(parseInt(req.params.id));
         const maxQuestionLength = settingsCache.get('max-question-length');
-        res.render('question/edit', { title: 'Pytanie', question, answers, maxQuestionLength, categories, selected: question.category });
+        res.render('question/createEdit', {
+            title: 'Pytanie',
+            question,
+            answers,
+            maxQuestionLength,
+            categories,
+            selected: question.category
+        });
     },
 
     store: async (req: express.Request, res: express.Response) => {
         const user: number = req.session.userid;
-        const question = req.body.question;
-        question.user = user;
-        question.category = req.body.category;
+        let insertedId: number;
 
-        const insertedId = await Question.insert(question);
-        await req.body.answer.map(answer => {
-            answer.question = insertedId;
-            if (!answer.correct) {
-                answer.correct = '0';
+        if (req.files) {
+            const spreadsheet = req.files.spreadsheet as fileUpload.UploadedFile;
+
+            const xlsxData = xlsx.read(spreadsheet.data, { type: 'buffer' });
+            const sheet = xlsxData.Sheets[xlsxData.SheetNames[0]];
+            const data = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as [];
+
+            let question: { text?: undefined, answers: [any?] };
+            const questions = [];
+            for (const row of data) {
+                if (row[0]) {
+                    if (question !== undefined) {
+                        questions.push(question);
+                    }
+                    question = { text: row[0], answers: [] };
+                }
+                const answer = { text: row[1], correct: row[2] !== undefined ? '1' : '0' };
+                question.answers.push(answer);
             }
-            return Answer.insert(answer);
-        });
-        res.redirect(`/question/${insertedId}`);
+            questions.push(question);
+
+            for (const question of questions) {
+                insertedId = await QuestionModel.insert({ text: question.text, user, category: req.body.category, status: 'private' });
+                await question.answers.map(async answer => {
+                    answer.question = insertedId;
+                    return await AnswerModel.insert(answer);
+                });
+            }
+            res.redirect('/questions');
+        } else {
+            const timeout = await QuestionModel.getNewerThan(new Date(new Date().getTime() - 30 * 1000));
+            if (timeout.length > 0) {
+                return res.render('error', { error: { message: 'Dodajesz pytania zbyt szybko!' } });
+            }
+
+            const question = req.body.question;
+            question.user = user;
+            question.category = req.body.category;
+
+            insertedId = await QuestionModel.insert(question);
+            await req.body.answer.map(async answer => {
+                answer.question = insertedId;
+                if (!answer.correct) {
+                    answer.correct = '0';
+                }
+                return await AnswerModel.insert(answer);
+            });
+            req.session.questionAddedId = insertedId;
+            res.redirect('/question/create');
+        }
     },
 
     update: async (req: express.Request, res: express.Response) => {
@@ -67,19 +182,19 @@ export default {
         const question = req.body.question;
         question.category = req.body.category;
 
-        const updateQuestion = Question.editById(id, req.body.question);
+        const updateQuestion = QuestionModel.editById(id, req.body.question);
         const updateAnswers = req.body.answer.map(answer => {
             if (!answer.correct) {
                 answer.correct = '0';
             }
-            return Answer.editById(answer.id, answer);
+            return AnswerModel.editById(answer.id, answer);
         });
         await Promise.all([updateQuestion, updateAnswers]);
         res.redirect('/questions');
     },
 
     destroy: async (req: express.Request, res: express.Response) => {
-        Question.deleteById(parseInt(req.params.id));
+        QuestionModel.deleteById(parseInt(req.params.id));
         res.redirect('/questions');
     }
 };
