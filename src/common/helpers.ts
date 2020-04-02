@@ -7,9 +7,11 @@ export default {
         return accum;
     },
 
-    check: (x: Number, y: Number, block: any) => {
-        if(x === y) {
+    check: (x: Number, y: Number, block: { fn: Function, inverse: Function }) => {
+        if (x === y) {
             return block.fn();
+        } else {
+            return block.inverse();
         }
     }
 };
