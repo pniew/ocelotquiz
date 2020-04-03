@@ -74,6 +74,7 @@ app.get('/question/create', questionController.create);
 app.get('/question/upload', questionController.upload);
 app.post('/question', fileUpload(), questionController.store);
 app.post('/question/pending/:id', questionController.pending);
+app.post('/question/revoke/:id', questionController.revoke);
 app.get('/question/:id', questionController.edit);
 app.post('/question/:id', questionController.update);
 app.delete('/question/:id', questionController.destroy);

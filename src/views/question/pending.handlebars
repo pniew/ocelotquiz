@@ -5,15 +5,7 @@
             <div style="float: right;">
                 <span class="badge badge-primary light m-1" data-toggle="tooltip"
                     title="{{this.category.description}}">{{this.category.name}}</span>
-                <div class="btn-group">
-                    <form action="/question/admin/pending/{{this.id}}" method="POST" class="m-1">
-                        <input type="hidden" name="action" value="accept">
-                        <button type="submit" class="btn btn-success" name="button">Zaakceptuj</button>
-                    </form>
-                    <form action="/question/admin/pending/{{this.id}}" method="POST" class="m-1">
-                        <input type="hidden" name="action" value="deny">
-                        <button type="submit" class="btn btn-danger" name="button">Odrzuć</button>
-                    </form>
+                <div class="d-inline">
                     <a href="javascript:void(0);" class="btn btn-primary collapser">
                         <i class="fa fa-chevron-down"></i>
                     </a>
@@ -35,6 +27,16 @@
                     <span>{{this.text}}</span>
                 </div>
                 {{/each}}
+                <div class="pull-right mb-3">
+                    <form action="/question/admin/pending/{{this.id}}" method="POST" class="d-inline m-1">
+                        <input type="hidden" name="action" value="accept">
+                        <button type="submit" class="btn btn-success" name="button">Zaakceptuj</button>
+                    </form>
+                    <form action="/question/admin/pending/{{this.id}}" method="POST" class="d-inline m-1">
+                        <input type="hidden" name="action" value="deny">
+                        <button type="submit" class="btn btn-danger" name="button">Odrzuć</button>
+                    </form>
+                </div>
             </div>
         </div>
     </li>

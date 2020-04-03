@@ -1,5 +1,25 @@
 <div class="pull-right">
     {{#if question}}
+    {{#if isPublic}}
+    <div class="mr-1 d-inline">
+        <span class="fa-stack fa-lg mb-2">
+            <i class="fa fa-eye" data-toggle="tooltip" title="Pytanie jest publiczne!"></i>
+        </span>
+    </div>
+    {{/if}}
+    {{#if isPrivate}}
+    <form action="/question/pending/{{question.id}}" method="POST" class="m-0 p-0 d-inline">
+        <button type="submit" class="btn btn-primary mb-2" name="action">
+            <i class="fa fa-share-alt" data-toggle="tooltip" title="Poproś o upublicznienie pytania"></i>
+        </button>
+    </form>
+    {{else}}
+    <form action="/question/revoke/{{question.id}}" method="POST" class="m-0 p-0 d-inline">
+        <button type="submit" class="btn btn-primary mb-2" name="action">
+            <i class="fa fa-share fa-rotate-180" data-toggle="tooltip" title="Wycofaj prośbę o upublicznienie"></i>
+        </button>
+    </form>
+    {{/if}}
     <button class="btn btn-danger mb-2" data-toggle="modal" data-target="#deleteQuestionModal">
         <i class="fa fa-trash" data-toggle="tooltip" title="Usuń to pytanie"></i>
     </button>
@@ -16,6 +36,7 @@
         <textarea class="form-control" required id="questionTextarea" rows="3" maxlength="{{maxQuestionLength}}"
             name="question[text]">{{question.text}}</textarea>
         <span class="character-count pull-right badge badge-dark" id="charLengthLabel"></span>
+        <input type="hidden" name="question[status]" value="{{question.status}}" />
     </div>
     <label>Odpowiedzi:</label>
     {{#each answers}}

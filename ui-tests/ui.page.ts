@@ -1,7 +1,7 @@
 import { By, WebDriver, until, Key } from 'selenium-webdriver';
 
 export class PageBuilder {
-    constructor(public readonly browser: WebDriver, private timeout: number = 6000) { }
+    constructor(public readonly browser: WebDriver, private timeout: number = 1000) { }
 
     public setTimeout(timeout: number): PageBuilder {
         this.timeout = timeout;

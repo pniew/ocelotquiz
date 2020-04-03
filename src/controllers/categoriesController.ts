@@ -14,6 +14,10 @@ interface EditCategoryView {
 
 export default {
     index: async (req: express.Request, res: express.Response) => {
+        if (req.session.userid !== 7) {
+            res.redirect('/');
+            return;
+        }
         const allCategories = await CategoryModel.getAllOrdered();
         const categories = allCategories.map(category => {
             if (category.parent !== null) {
@@ -32,6 +36,10 @@ export default {
     },
 
     edit: async (req: express.Request, res: express.Response) => {
+        if (req.session.userid !== 7) {
+            res.redirect('/');
+            return;
+        }
         const id = parseInt(req.params.id);
 
         const head: Category = {

@@ -9,6 +9,10 @@ import fileUpload from 'express-fileupload';
 
 export default {
     index: async (req: express.Request, res: express.Response) => {
+        if (req.session.userid === 7) {
+            res.redirect('/questions/admin/pending');
+            return;
+        }
         const userid = req.session.userid;
         const questions = await QuestionModel.getByUser(userid);
         const answers = await AnswerModel.getByQuestionIdArray(questions.map(question => question.id));
@@ -17,12 +21,14 @@ export default {
         const data = questions.map(question => {
             const status = question.status === 'private' ? 'btn-secondary fa-circle' : question.status === 'pending' ? 'btn-warning fa-circle' : 'btn-success fa-check-circle';
             const statusDescription = question.status === 'private' ? 'Pytanie prywatne' : question.status === 'pending' ? 'Oczekuje na akceptacje' : 'Pytanie publiczne';
+            const isPublic = question.status === 'public';
 
             return {
                 id: question.id,
                 user: question.user,
                 text: question.text,
                 status,
+                isPublic,
                 statusDescription,
                 category: categories.filter(category => category.id === question.category)[0],
                 answers: answers.filter(answer => answer.question === question.id)
@@ -37,10 +43,23 @@ export default {
             return res.status(404).send();
         }
         await QuestionModel.editById(parseInt(req.params.id), { status: 'pending' });
-        res.redirect('/questions/');
+        res.redirect(`/question/${question.id}`);
+    },
+
+    revoke: async (req: express.Request, res: express.Response) => {
+        const question = await QuestionModel.getById(parseInt(req.params.id));
+        if (question.user !== req.session.userid) {
+            return res.status(404).send();
+        }
+        await QuestionModel.editById(parseInt(req.params.id), { status: 'private' });
+        res.redirect(`/question/${question.id}`);
     },
 
     pendingIndex: async (req: express.Request, res: express.Response) => {
+        if (req.session.userid !== 7) {
+            res.redirect('/');
+            return;
+        }
         const questions = await QuestionModel.getByStatus('pending');
         const answers = await AnswerModel.getByQuestionIdArray(questions.map(question => question.id));
         const categories = await CategoryModel.getByIdArray([...new Set(questions.map(questions => questions.category))]);
@@ -111,9 +130,13 @@ export default {
 
         const answers = await AnswerModel.getByQuestionId(parseInt(req.params.id));
         const maxQuestionLength = settingsCache.get('max-question-length');
+        const isPrivate = question.status === 'private';
+        const isPublic = question.status === 'public';
         res.render('question/createEdit', {
             title: 'Pytanie',
             question,
+            isPrivate,
+            isPublic,
             answers,
             maxQuestionLength,
             categories,
@@ -126,34 +149,54 @@ export default {
         let insertedId: number;
 
         if (req.files) {
-            const spreadsheet = req.files.spreadsheet as fileUpload.UploadedFile;
+            try {
+                const spreadsheet = req.files.spreadsheet as fileUpload.UploadedFile;
 
-            const xlsxData = xlsx.read(spreadsheet.data, { type: 'buffer' });
-            const sheet = xlsxData.Sheets[xlsxData.SheetNames[0]];
-            const data = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as [];
+                const xlsxData = xlsx.read(spreadsheet.data, { type: 'buffer' });
+                const sheet = xlsxData.Sheets[xlsxData.SheetNames[0]];
+                const data = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as [];
 
-            let question: { text?: undefined, answers: [any?] };
-            const questions = [];
-            for (const row of data) {
-                if (row[0]) {
-                    if (question !== undefined) {
-                        questions.push(question);
+                let question: { text?: undefined, answers: [any?] };
+                const questions = [];
+                for (const row of data) {
+                    if (row[0]) {
+                        if (question !== undefined) {
+                            questions.push(question);
+                        }
+                        question = { text: row[0], answers: [] };
                     }
-                    question = { text: row[0], answers: [] };
+                    const answer = { text: row[1], correct: row[2] !== undefined ? '1' : '0' };
+                    if (answer.text) {
+                        question.answers.push(answer);
+                    }
                 }
-                const answer = { text: row[1], correct: row[2] !== undefined ? '1' : '0' };
-                question.answers.push(answer);
-            }
-            questions.push(question);
+                questions.push(question);
 
-            for (const question of questions) {
-                insertedId = await QuestionModel.insert({ text: question.text, user, category: req.body.category, status: 'private' });
-                await question.answers.map(async answer => {
-                    answer.question = insertedId;
-                    return await AnswerModel.insert(answer);
-                });
+                for (const question of questions) {
+                    if (question.text.length > parseInt(settingsCache.get('max-question-length'))) {
+                        return res.render('error', { error: { message: 'Co najmniej jedno z pytań jest zbyt długie!' } });
+                    }
+                    if (question.answers.length !== parseInt(settingsCache.get('default-answer-amount'))) {
+                        return res.render('error', { error: { message: 'Co najmniej jedno z pytań posiada nieprawidłową ilość odpowiedzi!' } });
+                    }
+                    for (const answer of question.answers) {
+                        if (answer.text.length > parseInt(settingsCache.get('max-question-length'))) {
+                            return res.render('error', { error: { message: 'Co najmniej jedna z odpowiedzi jest zbyt długa!' } });
+                        }
+                    }
+                }
+
+                for (const question of questions) {
+                    insertedId = await QuestionModel.insert({ text: question.text, user, category: req.body.category, status: 'private' });
+                    await question.answers.map(async answer => {
+                        answer.question = insertedId;
+                        return await AnswerModel.insert(answer);
+                    });
+                }
+                res.redirect('/questions');
+            } catch (error) {
+                return res.render('error', { error: { message: 'Nieobługiwany format pliku!' } });
             }
-            res.redirect('/questions');
         } else {
             const timeout = await QuestionModel.getNewerThan(new Date(new Date().getTime() - 30 * 1000));
             if (timeout.length > 0) {
@@ -163,6 +206,7 @@ export default {
             const question = req.body.question;
             question.user = user;
             question.category = req.body.category;
+            delete question.status;
 
             insertedId = await QuestionModel.insert(question);
             await req.body.answer.map(async answer => {
@@ -181,6 +225,12 @@ export default {
         const id = parseInt(req.params.id);
         const question = req.body.question;
         question.category = req.body.category;
+
+        if (question.status === 'public') {
+            question.status = 'pending';
+        } else if (question.status !== 'private' || question.status !== 'pending') {
+            question.status = 'private';
+        }
 
         const updateQuestion = QuestionModel.editById(id, req.body.question);
         const updateAnswers = req.body.answer.map(answer => {

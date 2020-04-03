@@ -116,6 +116,7 @@ export default {
     // logowanie z DB
     auth: async (req: express.Request, res: express.Response) => {
         const user = await UserModel.getByName(req.body.username);
+        console.log('User:', user);
         if (!user) {
             return redirectWithError(req, res, 'username', 'Nie znaleziono użytkownika o takiej nazwie!', '/login');
         }

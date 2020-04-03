@@ -54,7 +54,9 @@ describe('Question Controller', () => {
             question: mock.questions[0],
             answers: mock.answers.slice(0, 4),
             categories: categoriesMock.categories,
-            selected: 1
+            selected: 1,
+            isPrivate: true,
+            isPublic: false
         };
 
         assert.calledOnceWithExactly(res.render, 'question/createEdit', expectedResult);
@@ -167,6 +169,7 @@ describe('Question Controller', () => {
 
         const questionStub = sinon.stub(QuestionModel, 'insert').resolves(1);
         const answerStub = sinon.stub(AnswerModel, 'insert');
+        sinon.stub(QuestionModel, 'getNewerThan').resolves([]);
 
         await questionController.store(req as any, res as any);
 
@@ -218,7 +221,8 @@ describe('Question Controller', () => {
         assert.calledOnceWithExactly(questionStub, 1,
             {
                 text: mock.questionEditFormData.question.text,
-                category: mock.questionEditFormData.category
+                category: mock.questionEditFormData.category,
+                status: 'private'
             }
         );
 
