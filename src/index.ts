@@ -14,6 +14,7 @@ import categoriesController from 'controllers/categoriesController';
 
 import pool from 'common/database';
 import settingsCache from 'common/settingsCache';
+import quizController from './controllers/quizController';
 
 // const MySQLStore = mysqlSession(session);
 var MySQLStore = require('express-mysql-session')(session);
@@ -66,27 +67,45 @@ app.use((req, res, next) => {
     }
 });
 
+function isAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+    if (req.session && req.session.isAdmin) {
+        next();
+    }
+}
+
 app.get('/profile', profileController.index);
-app.get('/questions/admin/pending', questionController.pendingIndex);
-app.post('/question/admin/pending/:id', questionController.pendingAction);
+app.get('/profile/:id', profileController.index);
+app.get('/questions/admin/all', isAdmin, questionController.index);
+app.get('/questions/admin/pending', isAdmin, questionController.pendingIndex);
+app.post('/question/admin/pending/:id', isAdmin, questionController.pendingAction);
 app.get('/questions', questionController.index);
 app.get('/question/create', questionController.create);
 app.get('/question/upload', questionController.upload);
 app.post('/question', fileUpload(), questionController.store);
+app.get('/question/canAdd', questionController.canAdd);
 app.post('/question/pending/:id', questionController.pending);
 app.post('/question/revoke/:id', questionController.revoke);
 app.get('/question/:id', questionController.edit);
 app.post('/question/:id', questionController.update);
 app.delete('/question/:id', questionController.destroy);
 
-app.get('/categories', categoriesController.index);
-app.get('/category/:id?', categoriesController.edit);
-app.post('/category', categoriesController.create);
-app.post('/category/:id', categoriesController.update);
-app.delete('/category/:id', categoriesController.delete);
+app.get('/quiz', quizController.index);
+app.post('/quiz/generate', quizController.generate);
+app.get('/quiz/start', quizController.quiz);
+app.post('/quiz/next', quizController.answerAction);
 
-app.get('/settings', settingsController.index);
-app.post('/settings', settingsController.update);
+app.get('/categories', isAdmin, categoriesController.listAll);
+app.get('/category/:id?', isAdmin, categoriesController.edit);
+app.post('/category', isAdmin, categoriesController.actionCreate);
+app.post('/category/:id', isAdmin, categoriesController.actionUpdate);
+app.delete('/category/:id', isAdmin, categoriesController.actionDelete);
+
+app.get('/settings', isAdmin, settingsController.index);
+app.post('/settings', isAdmin, settingsController.update);
+
+app.get('/*', (req: express.Request, res: express.Response) => {
+    res.render('error', { error: { message: 'Strona nie istnieje' } });
+});
 
 settingsCache.init().then(() => {
     app.listen(port, () => {

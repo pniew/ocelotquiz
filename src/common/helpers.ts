@@ -13,5 +13,15 @@ export default {
         } else {
             return block.inverse();
         }
+    },
+
+    numeral: (x: number, ...str: string[]) => {
+        if (x === 1) {
+            return str[0];
+        } else if (x % 10 >= 2 && x % 10 <= 4) {
+            return str[1];
+        } else {
+            return str[2];
+        }
     }
 };

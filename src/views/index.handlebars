@@ -1,4 +1,4 @@
-<div class="text-center position-relative">
+<div class="text-center position-relative" data-view-name="oce-home">
     {{#if loggedIn}}
     <div class="position-absolute stick-right">
         Witaj, <a href="/profile">{{user.username}}</a>
@@ -10,7 +10,7 @@
         <h1 class="display-4 mx-3 mt-3">Ocelot Quiz</h1>
         {{#if loggedIn}}
         <p class="lead">
-            <a class="btn btn-primary btn-lg btn-block text-uppercase" href="#" role="button">Quiz</a>
+            <a class="btn btn-primary btn-lg btn-block text-uppercase" href="/quiz" role="button">Quiz</a>
         </p>
         {{else}}
         <p class="lead">

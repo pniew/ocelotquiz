@@ -25,7 +25,11 @@ class SettingCache {
     }
 
     public get(key: string): any {
-        return this.cacheData.find(el => el.key === key).value;
+        return this.cacheData.find(el => el.key === key)?.value;
+    }
+
+    public getInt(key: string): any {
+        return parseInt(this.cacheData.find(el => el.key === key)?.value);
     }
 
     public set(key: string, value: any): void {

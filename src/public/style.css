@@ -58,3 +58,8 @@ h1 {
 .badge-primary.light {
     background-color: #3396ff;
 }
+
+.oce-progress-timer {
+    transition-duration: 1s;
+    transition-timing-function: ease-out;
+}

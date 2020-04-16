@@ -1,9 +1,11 @@
 import bcrypt from 'bcrypt';
 import express from 'express';
-import { createCryptoString } from 'common/utils';
+import { createCryptoString, saveSession } from 'common/utils';
 import transporter from 'common/nodemailer';
 import settingsCache from 'common/settingsCache';
 import UserModel from 'models/UserModel';
+import { OceSession } from 'src/models/OceSession';
+import QuizRecordsModel from 'src/models/QuizRecordsModel';
 
 const EMAIL_REGEXP = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
@@ -30,26 +32,36 @@ const sendActivationMail = (username: string, email: string, token: string) => {
 };
 
 const redirectWithError = (req: express.Request, res: express.Response, key: string, message: string, returPath: string) => {
-    if (req.session.errors === undefined) {
-        req.session.errors = {};
+    const session = req.session as OceSession;
+    if (session.errors === undefined) {
+        session.errors = {};
     }
-    req.session.errors.previousBody = req.body;
-    req.session.errors[key] = { message };
+    session.errors.previousBody = req.body;
+    session.errors[key] = { message };
+    saveSession(req);
     return res.redirect(returPath);
 };
 
 export default {
     // aktualnie lista wszystkich userów bo tak
     index: async (req: express.Request, res: express.Response) => {
-        const user = await UserModel.getById(req.session.userid);
-        res.render('profile/index', { title: 'Użytkownicy', user });
+        const session = req.session as OceSession;
+        const user = await UserModel.getById(session.userId);
+        let points = 0;
+        const quizRecords = (await QuizRecordsModel.getByUserIdLimit(session.userId, 15)).map(q => {
+            points += q.points;
+            return { ...q, created: new Date(q.created) };
+        });
+
+        res.render('profile/index', { title: 'Użytkownicy', user, quizRecords, totalPoints: points });
     },
 
     // rejestracja form
     create: async (req: express.Request, res: express.Response) => {
+        const session = req.session as OceSession;
         const requiredPasswordLength = settingsCache.get('required-password-length');
-        const errors = req.session.errors;
-        delete req.session.errors;
+        const errors = session.errors;
+        delete session.errors;
         res.render('profile/register', { title: 'Rejestracja', errors, requiredPasswordLength });
     },
 
@@ -60,6 +72,7 @@ export default {
 
     // rejestracja do DB
     store: async (req: express.Request, res: express.Response) => {
+        const session = req.session as OceSession;
         if (req.body.username === undefined || req.body.username.length === 0) {
             return redirectWithError(req, res, 'username', 'Nie podano nazwy użytkownika!', '/register');
         }
@@ -83,7 +96,7 @@ export default {
         const hashedToken = await bcrypt.hash(token, 10);
         const timestamp = new Date().getTime();
 
-        const userid = await UserModel.insert({
+        const userId = await UserModel.insert({
             username: req.body.username,
             email: req.body.email,
             activationToken: `${timestamp}:${hashedToken}`,
@@ -91,8 +104,9 @@ export default {
         });
         sendActivationMail(req.body.username, req.body.email, token);
 
-        req.session.loggedIn = true;
-        req.session.userid = userid;
+        session.loggedIn = true;
+        session.userId = userId;
+        saveSession(req);
         res.redirect('/');
     },
 
@@ -108,15 +122,17 @@ export default {
 
     // form logowania (może na str głównej?)
     login: async (req: express.Request, res: express.Response) => {
-        const errors = req.session.errors;
-        delete req.session.errors;
+        const session = req.session as OceSession;
+        const errors = session.errors;
+        delete session.errors;
+        saveSession(req);
         res.render('profile/login', { title: 'Logowanie', errors });
     },
 
     // logowanie z DB
     auth: async (req: express.Request, res: express.Response) => {
+        const session = req.session as OceSession;
         const user = await UserModel.getByName(req.body.username);
-        console.log('User:', user);
         if (!user) {
             return redirectWithError(req, res, 'username', 'Nie znaleziono użytkownika o takiej nazwie!', '/login');
         }
@@ -124,8 +140,10 @@ export default {
         if (!await bcrypt.compare(req.body.password, user.password)) {
             return redirectWithError(req, res, 'password', 'Hasło nieprawidłowe!', '/login');
         }
-        req.session.loggedIn = true;
-        req.session.userid = user.id;
+        session.loggedIn = true;
+        session.userId = user.id;
+        session.isAdmin = user.admin;
+        saveSession(req);
         res.redirect('/');
     },
 
@@ -145,6 +163,7 @@ export default {
         }
 
         UserModel.editById(user.id, { status: '1' });
+        saveSession(req);
         res.redirect('/');
     },
 

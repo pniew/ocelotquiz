@@ -1,5 +1,9 @@
 import pool from 'common/database';
 import { format as mysqlFormat } from 'mysql2';
+import dotenv from 'dotenv';
+
+dotenv.config();
+const debugLogs = process.env.DEBUG_LOGS === 'true';
 
 export interface Base {
     id?: number;
@@ -69,7 +73,9 @@ export abstract class BaseModel<T extends Base> {
         this.validateSqlTableName();
         const preparedQuery = mysqlFormat(sql, values);
         try {
-            // console.log('Query:', preparedQuery);
+            if (debugLogs) {
+                console.log('Query:', preparedQuery);
+            }
             const [rows] = await pool.execute(preparedQuery) as any;
             return rows;
         } catch (error) {

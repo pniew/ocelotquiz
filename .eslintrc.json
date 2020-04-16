@@ -6,6 +6,7 @@
     },
     "extends": [
         "standard",
+        "eslint:recommended",
         "plugin:chai-expect/recommended"
     ],
     "globals": {
@@ -29,8 +30,16 @@
             "error",
             "always"
         ],
+        "space-before-function-paren": [
+            "error", {
+                "anonymous": "always",
+                "named": "never",
+                "asyncArrow": "always"
+            }
+        ],
         "@typescript-eslint/no-unused-vars": "error",
         "no-useless-constructor": "off",
-        "@typescript-eslint/no-useless-constructor": "error"
+        "@typescript-eslint/no-useless-constructor": "error",
+        "no-trailing-spaces": "error"
     }
 }

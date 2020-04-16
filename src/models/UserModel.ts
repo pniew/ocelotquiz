@@ -5,6 +5,7 @@ export interface User extends Base {
     activationToken: string;
     username: string;
     password: string;
+    admin?: boolean; // 0 - default, 1 - admin
 }
 
 class UserModel extends BaseModel<User> {

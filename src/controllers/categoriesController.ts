@@ -1,7 +1,7 @@
 import express from 'express';
-import CategoryModel, { Category } from 'models/CategoryModel';
+import CategoryModel, { Category, Top } from 'models/CategoryModel';
 
-interface EditCategoryView {
+interface CreateEditCategoryView {
     title: string;
     allCategories: Category[];
     topCategory: Category;
@@ -13,43 +13,17 @@ interface EditCategoryView {
 }
 
 export default {
-    index: async (req: express.Request, res: express.Response) => {
-        if (req.session.userid !== 7) {
-            res.redirect('/');
-            return;
-        }
+    listAll: async (req: express.Request, res: express.Response) => {
         const allCategories = await CategoryModel.getAllOrdered();
-        const categories = allCategories.map(category => {
-            if (category.parent !== null) {
-                const topCategory = allCategories.find(cat => cat.id === category.parent);
-                if (topCategory.subcategories === undefined) {
-                    topCategory.subcategories = [];
-                }
-                topCategory.subcategories.push(category);
-                return null;
-            }
-            delete category.parent;
-            return category;
-        }).filter(cat => cat !== null);
 
-        res.render('categories/index', { title: 'Lista kategorii', categories, allCategories });
+        res.render('categories/listAll', { title: 'Lista kategorii', allCategories });
     },
 
     edit: async (req: express.Request, res: express.Response) => {
-        if (req.session.userid !== 7) {
-            res.redirect('/');
-            return;
-        }
-        const id = parseInt(req.params.id);
-
-        const head: Category = {
-            id: 0,
-            name: 'Kategorie',
-            description: 'Spis głównych kategorii.'
-        };
+        const categoryId = parseInt(req.params.id);
 
         const allCategories = await CategoryModel.getAllOrdered();
-        const topCategory = id ? allCategories.find(c => c.id === id) : head;
+        const topCategory = categoryId ? allCategories.find(c => c.id === categoryId) : Top;
         const path: Category[] = [];
         if (!topCategory.parent) {
             topCategory.parent = 0;
@@ -62,14 +36,14 @@ export default {
             if (last.parent) {
                 last = allCategories.find(c => c.id === last.parent);
             } else {
-                if (!path.find(x => x.id === head.id)) { path.unshift(head); }
+                if (!path.find(x => x.id === Top.id)) { path.unshift(Top); }
                 break;
             }
         }
 
-        const subCategories = id ? await CategoryModel.getByParent(id) : await CategoryModel.getTopCategories();
+        const subCategories = categoryId ? await CategoryModel.getByParent(categoryId) : await CategoryModel.getTopCategories();
 
-        const options: EditCategoryView = {
+        const options: CreateEditCategoryView = {
             title: 'Kategorie',
             topCategory,
             subCategories,
@@ -83,44 +57,55 @@ export default {
         res.render('categories/edit', options);
     },
 
-    create: async (req: express.Request, res: express.Response) => {
+    actionCreate: async (req: express.Request, res: express.Response) => {
         const category: Category = req.body.category;
         if (parseInt(category.parent as any) === 0) {
             category.parent = null;
         }
+
         delete category.id;
+        category.name = category.name.toUpperCase();
 
         await CategoryModel.insert(category);
 
         res.redirect(`/category/${category.parent}`);
     },
 
-    update: async (req: express.Request, res: express.Response) => {
-        const id = parseInt(req.params.id);
-        const category: Category = req.body.category;
-        if (id === parseInt(category.parent as any)) {
+    actionUpdate: async (req: express.Request, res: express.Response) => {
+        const categoryId = parseInt(req.params.id);
+        const category = req.body.category as Category;
+        if (categoryId === parseInt(category.parent as any)) {
             // Handle move error, cannot move to itself
-            res.redirect(`/category/${id}`);
+            res.redirect(`/category/${categoryId}`);
             return;
         }
         delete category.id;
+        category.name = category.name.toUpperCase();
 
         if (parseInt(category.parent as any) === 0) {
             category.parent = null;
         }
 
-        await CategoryModel.editById(id, category);
+        await CategoryModel.editById(categoryId, category);
 
-        res.redirect(`/category/${id}`);
+        if (req.headers['x-async-action']) {
+            return res.status(200);
+        }
+
+        res.redirect(`/category/${categoryId}`);
     },
 
-    delete: async (req: express.Request, res: express.Response) => {
-        const id = parseInt(req.params.id);
-        const parent = parseInt(req.body.parentId);
+    actionDelete: async (req: express.Request, res: express.Response) => {
+        const categoryId = parseInt(req.params.id);
+        const parentId = parseInt(req.params.parent);
 
-        await CategoryModel.editByParent(id, { parent: 1 });
-        await CategoryModel.deleteById(id);
+        await CategoryModel.editByParent(categoryId, { parent: 1 });
+        await CategoryModel.deleteById(categoryId);
 
-        res.redirect(`/category/${parent}`);
+        if (req.headers['x-async-action']) {
+            return res.status(200);
+        }
+
+        res.redirect(`/category/${parentId}`);
     }
 };

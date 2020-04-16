@@ -1,6 +1,7 @@
 import express from 'express';
 import SettingModel from 'models/SettingModel';
 import settingsCache from 'common/settingsCache';
+import { saveSession } from 'src/common/utils';
 
 export default {
     index: async (req: express.Request, res: express.Response) => {
@@ -17,6 +18,7 @@ export default {
                 }
             }
         }
+        saveSession(req);
         res.redirect('/settings');
     }
 };
