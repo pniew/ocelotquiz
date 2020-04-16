@@ -1,12 +1,13 @@
-<div class="pull-right">
+<div class="pull-right" data-view-name="oce-{{#if question}}edit{{else}}create{{/if}}-question">
     {{#if question}}
-    {{#if isPublic}}
-    <div class="mr-1 d-inline">
-        <span class="fa-stack fa-lg mb-2">
-            <i class="fa fa-eye" data-toggle="tooltip" title="Pytanie jest publiczne!"></i>
-        </span>
-    </div>
-    {{/if}}
+    <span class="d-inline-block mr-2">
+        {{#if isPublic}}
+        <i class="fa fa-eye fa-lg" data-toggle="tooltip" title="Pytanie jest publiczne"></i>
+        {{/if}}
+        {{#if isPending}}
+        <i class="fa fa-clock-o fa-lg" data-toggle="tooltip" title="Pytanie oczekuje na akceptację"></i>
+        {{/if}}
+    </span>
     {{#if isPrivate}}
     <form action="/question/pending/{{question.id}}" method="POST" class="m-0 p-0 d-inline">
         <button type="submit" class="btn btn-primary mb-2" name="action">
@@ -30,7 +31,8 @@
     {{/if}}
 </div>
 
-<form action="/question{{#if question}}/{{question.id}}{{/if}}" method="post" class="m-0">
+<form action="/question{{#if question}}/{{question.id}}{{/if}}" method="post" class="m-0 oce-question-form"
+    data-question-mode="{{#if question}}edit{{else}}add{{/if}}">
     <div class="form-group mb-3">
         <label for="questionTextarea" class="pt-2">Treść pytania:</label>
         <textarea class="form-control" required id="questionTextarea" rows="3" maxlength="{{maxQuestionLength}}"
@@ -58,15 +60,20 @@
     {{/each}}
     <div class="form-group mt-3">
         <label for="categorySelect">Kategoria</label>
-        <select class="form-control custom-select selectpicker" data-live-search="true" data-size="5" name="category"
+        <select class="form-control custom-select selectpicker" data-live-search="true" data-size="10" name="category"
             id="categorySelect">
-            {{#each categories}}
-            <option value="{{this.id}}" {{#check this.id ../selected}} selected{{/check}}>
-                {{this.name}}</option>
+            {{#each categoriesTree}}
+            <optgroup label="{{this.name}}">
+                <option value="{{this.id}}" {{#check this.id ../selected}} selected{{/check}}>{{this.name}}</option>
+                {{#each this.subcategories}}
+                <option value="{{this.id}}" {{#check this.id ../../selected}} selected{{/check}}>{{this.name}}</option>
+                {{/each}}
+            </optgroup>
             {{/each}}
         </select>
     </div>
-    <button class="btn btn-primary btn-block mt-2" type="submit" name="action">Zapisz pytanie</button>
+    <small class=""></small>
+    <button class="btn btn-primary btn-block mt-2 oce-question-form-button" type="button">Zapisz pytanie</button>
 </form>
 
 <!-- Modal -->
@@ -93,9 +100,29 @@
     </div>
 </div>
 
+<div class="modal fade" id="tooFastModal" tabindex="-1" role="dialog" aria-labelledby="tooFastModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tooFastModalLabel">Dodajesz pytania zbyt szybko!</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Prrrr, zwolnij, szalony!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Ok, poczekam</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{#if questionAdded}}
 <div style="position: absolute; left: 0; top: 30%; width: 100%;">
-    <div style="margin: auto" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3000">
+    <div style="margin: auto" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3500">
         <div class="toast-header">
             <strong class="mr-auto">Ocelot</strong>
             <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
@@ -122,5 +149,39 @@
         const text_remaining = textMaxLength - currentLength;
 
         $('#charLengthLabel').html(currentLength + ' / ' + textMaxLength);
+    });
+
+    const url = '/question/canAdd';
+    async function checkCanAdd() {
+        const response = await fetch(url, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            redirect: 'follow',
+            referrerPolicy: 'no-referrer'
+        });
+        return await response.json();
+    };
+
+    document.querySelector('.oce-question-form-button').addEventListener('click', async function (event) {
+        const form = document.querySelector('.oce-question-form');
+        if (form.dataset.questionMode === 'edit') {
+            if (form.reportValidity()) {
+                form.submit();
+            }
+        } else {
+            if (form.reportValidity()) {
+                const canAdd = await checkCanAdd();
+                if (canAdd.ready) {
+                    form.submit();
+                } else {
+                    $('#tooFastModal').modal('show');
+                }
+            }
+        }
     });
 </script>

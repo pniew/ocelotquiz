@@ -1,8 +1,18 @@
-<div class="accordion">
+{{#if isAdmin}}
+<div class="w-100">
+    <div class="pull-right mr-2">
+        <a href="/questions/admin/pending" class="btn btn-primary"><i class="fa fa-clock-o" title="Oczekujące pytania"
+                data-toggle="tooltip"></i></a>
+    </div>
+</div>
+<br />
+<br />
+{{/if}}
+<div class="accordion" data-view-name="oce-my-questions">
     {{#each data}}
     <li class="card">
         <div class="card-header">
-            <div style="float: right;">
+            <div class="pull-right">
                 {{#if isPublic}}
                 <span class="badge badge-basic light">
                     <i class="fa fa-eye" data-toggle="tooltip" title="Pytanie publiczne"></i>
@@ -27,7 +37,7 @@
             <div class="card-body">
                 {{#each this.answers}}
                 <div>
-                    <span style="display: inline-block; width: 20px">
+                    <span class="d-inline-block" style="width: 20px">
                         {{#if this.correct}}
                         <i class="fa fa-check"></i>
                         {{else}}
@@ -37,6 +47,10 @@
                     <span>{{this.text}}</span>
                 </div>
                 {{/each}}
+                <div class="pull-right mb-3">
+                    <small class="mr-2">Twórca pytania: <a
+                            href="/profile/{{this.creator.id}}">{{this.creator.username}}</a></small>
+                </div>
             </div>
         </div>
     </li>
