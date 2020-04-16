@@ -1,0 +1,109 @@
+<div data-view-name="oce-quiz-question">
+    <div class="progress mb-1">
+        <div class="oce-countdown-timer progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+            style="width: 100%;" aria-valuenow="{{countdown}}" aria-valuemin="0" aria-valuemax="{{maxCountdownTime}}">
+            {{countdown}}s</div>
+    </div>
+    <div class="pull-right">
+        <div class="badge badge-primary d-block">
+            <div>Pytanie: {{progress.current}} z {{progress.max}}</div>
+        </div>
+        <div class="badge badge-primary d-block mt-1">
+            <div>Punkty: {{progress.points}}</div>
+        </div>
+    </div>
+    <br />
+    <br />
+    <div class="oce-question-text" data-countdown="{{countdown}}">
+        {{question.text}}
+    </div>
+    <div class="mt-4 px-2">
+        <div class="row">
+            {{#each answers}}
+            <div class="col-md-6 mt-2 px-1">
+                <button class="btn btn-primary btn-block oce-answer-btn" style="height: 150px;" data-id="{{this.id}}"
+                    data-question="{{../questionIndex}}"
+                    onclick="checkAnswer({{../questionIndex}}, {{this.id}})">{{this.text}}</button>
+            </div>
+            {{/each}}
+        </div>
+    </div>
+</div>
+
+<script>
+    let theTickerInterval = null;
+    const url = '/quiz/next';
+    async function checkAnswer(questionIndex, answerId) {
+        grayOutAnswers();
+        clearInterval(theTickerInterval);
+        const data = { selectedAnswer: answerId, questionIndex };
+        const response = await sendAsyncRequest(url, data);
+        showAnswers(response);
+        setTimeout(() => location.reload(), 2000);
+    }
+
+    function blinkAnswer(data) {
+        const correct = document.querySelector(`button[data-id="${data.correctId}"]`);
+
+        function toggle() {
+            correct.classList.toggle('btn-secondary');
+            correct.classList.toggle('btn-success');
+        }
+        setTimeout(toggle, 333);
+        setTimeout(toggle, 667);
+        setTimeout(toggle, 1000);
+        setTimeout(toggle, 1333);
+    }
+
+    function grayOutAnswers() {
+        const answers = document.querySelectorAll('.oce-answer-btn');
+        answers.forEach(answer => {
+            answer.classList.add('btn-secondary');
+        });
+    }
+
+    function showAnswers(data) {
+        const correct = document.querySelector(`button[data-id="${data.correctId}"]`);
+        const selected = document.querySelector(`button[data-id="${data.selectedId}"]`);
+
+        if (data.selectedId === data.correctId) {
+            selected.classList.remove('btn-secondary');
+            selected.classList.add('btn-success');
+        } else {
+            if (selected) {
+                selected.classList.remove('btn-secondary');
+                selected.classList.add('btn-danger');
+            }
+            correct.classList.remove('btn-secondary');
+            correct.classList.add('btn-success');
+            blinkAnswer(data);
+        }
+    }
+
+    function countdown(currentCountdown, totalDuration) {
+        const start = (new Date()).getTime();
+
+        function timerTick() {
+            const now = (new Date()).getTime();
+            const diff = Math.round(currentCountdown - (now - start) / 1000);
+            const progresBarWidth = (diff / totalDuration) * 100;
+
+            $('div.oce-countdown-timer').html(`${diff}s`);
+            $('div.oce-countdown-timer').css({
+                width: progresBarWidth + '%'
+            });
+
+            if (diff < 0) {
+                const q = $('.oce-answer-btn').data('question');
+                const a = -1;
+                checkAnswer(q, a);
+            }
+        }
+
+        timerTick();
+        theTickerInterval = setInterval(timerTick, 1000);
+    }
+    const timeleft = $('.oce-countdown-timer').attr('aria-valuenow');
+    const timeMax = $('.oce-countdown-timer').attr('aria-valuemax');
+    countdown(timeleft, timeMax);
+</script>
