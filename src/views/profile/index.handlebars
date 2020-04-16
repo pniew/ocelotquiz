@@ -1,1 +1,11 @@
-Witaj zalogowany przybyszu: {{user.username}} ({{user.email}})
+<div data-view-name="oce-profile">
+   Witaj zalogowany przybyszu: {{user.username}} ({{user.email}}) 
+</div>
+<div>Twoje punkty: {{totalPoints}}</div>
+{{!-- <ul>
+    {{#each quizRecords}}
+    <li>
+        <span>{{this.points}} / {{this.length}}</span> <time>{{this.created}}</time>
+    </li>
+    {{/each}}
+</ul> --}}
