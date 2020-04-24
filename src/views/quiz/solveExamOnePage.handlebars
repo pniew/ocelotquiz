@@ -1,0 +1,176 @@
+<div class="px-5" data-view-name="oce-solve-exam" id="oceApp">
+    <div v-if="examFinished">
+        <div class="text-center mb-3">
+            <h1 class="mt-1">Wynik: $[examScores.percent]%</h1>
+            <h3 class="mt-5">Punkty: $[examScores.points]/$[questions.length]</h3>
+            <h5 class="text-muted">Użytkownik: $[username]</h5>
+        </div>
+    </div>
+    <div>
+        <div>
+            <div class="d-flex justify-content-between align-items-center">
+                <button class="btn btn-primary" style="width: 100px;" @click="prevQuestion"
+                    :class="{'disabled': selectedQuestionIndex === 0}">
+                    <span>Cofnij</span>
+                </button>
+                <div class="text-center">
+                    <h1 class="my-1 mx-2">Quiz</h1>
+                    <span class="text-break">$[examName]</span>
+                </div>
+                <button v-if="!onLastQuestion || examFinished" class="btn btn-primary" style="width: 100px;" @click="nextQuestion"
+                    :class="{'disabled': selectedQuestionIndex === questions.length - 1}">
+                    <span>Dalej</span>
+                </button>
+                <button v-if="onLastQuestion && !examFinished" class="btn btn-danger" style="width: 100px;"
+                    @click="submitAnswers">
+                    <span>Zakończ</span>
+                </button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center px-3 mt-2" v-if="!loadingExam">
+                <h4>Pytanie $[selectedQuestionIndex + 1] z $[questions.length]</h4>
+                <h5 class="text-muted">$[getTime()]</h5>
+            </div>
+            <div class="mt-4" style="min-height: 50px;">
+                <strong>$[activeQuestion.text]</strong>
+            </div>
+        </div>
+        <div class="p-4 text-center" v-if="loadingExam">
+            <div class="fa-4x">
+                <i class="fa fa-spinner fa-pulse"></i>
+            </div>
+        </div>
+        <div class="solve-exam-answers mt-4">
+            <ul class="list-group">
+                <li class="list-group-item pl-2" :class="{'bg-success': isCorrect(answer)}" v-for="answer in activeQuestion.answers" :key="`ANS-${answer.id}`">
+                    <div class="d-flex">
+                        <div class="align-self-center ml-1">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" :id="`answer-${answer.id}-chkbx`"
+                                    v-model="selectedAnswersIds" :value="answer.id" @change="sendAnswers"
+                                    :disabled="examFinished">
+                                <label class="custom-control-label" :for="`answer-${answer.id}-chkbx`"></label>
+                            </div>
+                        </div>
+                        <div class="ml-1 pl-2 border-left">
+                            <span>$[answer.text]</span>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <div class="solve-exam-footer mt-4">
+            <div class="text-center">
+                <button v-for="i in questions.length" class="btn btn-question-index"
+                    :class="{'btn-primary': isSelected(i), 'btn-outline-primary': !isSelected(i)}"
+                    @click="selectQuestion(i-1)">
+                    <span>$[i]</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    let startTime = new Date().getTime();
+    let duration = 0;
+
+    let tickTockInterval = setInterval(function () {
+        const current = new Date().getTime();
+        if (duration) {
+            Vue.set(vm, 'pendingTime', duration - (current - startTime));
+        } else {
+            Vue.set(vm, 'pendingTime', (current - startTime));
+        }
+        if (duration !== 0 && vm.pendingTime <= 0) {
+            clearInterval(tickTockInterval);
+        }
+    }, 1000);
+
+    sendAsyncRequest(window.location.pathname + '/data', { startTime }, 'POST').then(res => {
+        console.log(res);
+        vm.examScores.points = res.points;
+        vm.examScores.percent = (res.percent * 100).toFixed(2);
+        vm.examFinished = !!res.completed;
+        Vue.set(vm, 'username', res.username);
+        Vue.set(vm, 'correctAnswers', res.correctAnswers);
+        vm.questions.splice(0, vm.questions.length);
+        vm.loadingExam = false;
+        vm.examName = res.examName;
+        startTime = new Date(res.startTime);
+        duration = res.duration * 1000;
+        if (res.questionsAnswersList) {
+            res.questionsAnswersList?.forEach(x => vm.questions.push(x));
+        }
+        if (res.selectedAnswersList) {
+            vm.selectedAnswersIds.push(...res.selectedAnswersList);
+        }
+    });
+
+    const vm = new Vue({
+        el: '#oceApp',
+        data: {
+            examName: '',
+            loadingExam: true,
+            selectedQuestionIndex: 0,
+            selectedAnswersIds: [],
+            pendingTime: 0,
+            correctAnswers: [],
+            timeleft: 0,
+            questions: [],
+            examScores: { points: 0, percent: 0 },
+            examFinished: false,
+            username: ''
+        },
+        methods: {
+            prevQuestion: function () {
+                this.selectedQuestionIndex -= this.selectedQuestionIndex > 0 ? 1 : 0;
+            },
+            nextQuestion: function () {
+                this.selectedQuestionIndex += this.selectedQuestionIndex < this.questions.length - 1 ? 1 : 0;
+            },
+            selectQuestion: function (index) {
+                if (index >= 0 && index < this.questions.length) {
+                    this.selectedQuestionIndex = index;
+                }
+            },
+            isSelected: function (index) {
+                return this.selectedQuestionIndex + 1 === index;
+            },
+            isCorrect: function (ans) {
+                return this.correctAnswers.findIndex(x => x.id === ans.id) >= 0;
+            },
+            getTime: function () {
+                const time = this.pendingTime > 0 ? this.pendingTime : 0;
+                const seconds = (Math.round(time / 1000) % 60).toString().padStart(2, '0');
+                const minutes = (Math.round(time / 60000) % 60).toString().padStart(2, '0');
+                return `${minutes}:${seconds}`;
+            },
+            sendAnswers: function () {
+                sendAsyncRequest(window.location.pathname + '/answer', { answers: this.selectedAnswersIds }, 'POST').then(res => {
+
+                });
+            },
+            submitAnswers: function () {
+                if (confirm("Czy na pewno chcesz zatwierdzić pytanie? Po zatwierdzeniu nie będzie można edytować odpowiedzi.")) {
+                    sendAsyncRequest(window.location.pathname + '/submitAnswers', { answers: this.selectedAnswersIds }, 'POST').then(res => {
+                        console.log(res);
+                        vm.examScores.points = res.points;
+                        vm.examScores.percent = (res.percent * 100).toFixed(2);
+                        vm.examFinished = !!res.completed;
+                        window.location.reload();
+                    });
+                }
+            }
+        },
+        computed: {
+            activeQuestion: function () {
+                if (this.questions.length === 0) {
+                    return {};
+                }
+                return this.questions[this.selectedQuestionIndex];
+            },
+            onLastQuestion: function () {
+                return this.questions.length > 0 && this.selectedQuestionIndex === this.questions.length - 1;
+            }
+        }
+    });
+</script>
