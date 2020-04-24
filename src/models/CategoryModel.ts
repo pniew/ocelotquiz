@@ -25,6 +25,10 @@ class CategoryModel extends BaseModel<Category> {
         return await super.execute(query);
     }
 
+    public async getByName(name: string): Promise<Category> {
+        return (await super.getByField('name', name))[0];
+    }
+
     public async editByParent(id: number, data: Category | { [key: string]: string | number }) {
         return await super.editByField('parent', id, data);
     }
@@ -38,8 +42,12 @@ class CategoryModel extends BaseModel<Category> {
         return (await super.getByField('parent', id)).sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    public async getAllWithQuestionsCountGt(count: number = 0): Promise<ExtendedCategory[]> {
-        return await super.execute('SELECT categories.id, categories.created, categories.parent, categories.name, categories.description, COUNT(que.id) AS questionCount FROM categories LEFT JOIN( SELECT * FROM questions WHERE questions.status = \'public\' ) AS que ON categories.id = que.category GROUP BY categories.id HAVING questionCount >= ? ORDER BY categories.name', [count]);
+    public async getTopWithQuestionCount(): Promise<ExtendedCategory[]> {
+        return await super.execute('SELECT categories.id, categories.created, categories.parent, categories.name, categories.description, COUNT(que.id) AS questionCount FROM categories LEFT JOIN questions AS que ON categories.id = que.category HAVING categories.parent IS NULL GROUP BY categories.id ? ORDER BY categories.name');
+    }
+
+    public async getAllWithPublicQuestions(minQuestionCount: number = 0): Promise<ExtendedCategory[]> {
+        return await super.execute('SELECT categories.id, categories.created, categories.parent, categories.name, categories.description, COUNT(que.id) AS questionCount FROM categories LEFT JOIN( SELECT * FROM questions WHERE questions.status = \'public\' ) AS que ON categories.id = que.category GROUP BY categories.id HAVING questionCount >= ? ORDER BY categories.name', [minQuestionCount]);
     }
 
     public async getTree() {

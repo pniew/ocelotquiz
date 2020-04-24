@@ -1,5 +1,7 @@
 import express from 'express';
 import CategoryModel, { Category, Top } from 'models/CategoryModel';
+import QuestionModel from 'src/models/QuestionModel';
+import { KeyValString } from 'src/models/BaseModel';
 
 interface CreateEditCategoryView {
     title: string;
@@ -7,6 +9,7 @@ interface CreateEditCategoryView {
     topCategory: Category;
     subCategories: Category[];
     breadcrumbs: Category[];
+    counts: KeyValString;
     hideHeader: boolean;
     hideModifyButtons: boolean;
     topMostLevel: boolean;
@@ -43,10 +46,13 @@ export default {
 
         const subCategories = categoryId ? await CategoryModel.getByParent(categoryId) : await CategoryModel.getTopCategories();
 
+        const counts = categoryId ? await QuestionModel.getCountForCategory(categoryId) : {} as KeyValString;
+
         const options: CreateEditCategoryView = {
             title: 'Kategorie',
             topCategory,
             subCategories,
+            counts,
             allCategories,
             breadcrumbs: path,
             hideHeader: true,
@@ -97,7 +103,7 @@ export default {
 
     actionDelete: async (req: express.Request, res: express.Response) => {
         const categoryId = parseInt(req.params.id);
-        const parentId = parseInt(req.params.parent);
+        const parentId = parseInt(req.params.parent) | 0;
 
         await CategoryModel.editByParent(categoryId, { parent: 1 });
         await CategoryModel.deleteById(categoryId);
@@ -107,5 +113,25 @@ export default {
         }
 
         res.redirect(`/category/${parentId}`);
+    },
+
+    getOrCreatePrivate: async (category: Category) => {
+        category.parent = 33;
+        if (category.name) {
+            category.name = category.name.toUpperCase();
+        }
+        if (category.name) {
+            const catFromDb = await CategoryModel.getByName(category.name);
+            if (catFromDb) {
+                return catFromDb;
+            } else {
+                delete category.id;
+                const insertedId = await CategoryModel.insert(category);
+                category.id = insertedId;
+                return category;
+            }
+        } else {
+            return await CategoryModel.getById(category.id);
+        }
     }
 };

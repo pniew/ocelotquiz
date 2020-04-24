@@ -1,7 +1,7 @@
 import { By, WebDriver, until, Key } from 'selenium-webdriver';
 
 export class PageBuilder {
-    constructor(public readonly browser: WebDriver, private timeout: number = 1000) { }
+    constructor(public readonly browser: WebDriver, private timeout: number = 5000) { }
 
     public setTimeout(timeout: number): PageBuilder {
         this.timeout = timeout;
@@ -9,9 +9,18 @@ export class PageBuilder {
     }
 
     public async logIn() {
+        await this.browser.get('http://localhost:8080/logout');
         await this.browser.get('http://localhost:8080/login');
         await this.getInputUsername().sendKeys('Xtry333');
         await this.getInputPassword().sendKeys('12345678', Key.RETURN);
+        return await this.waitForLoggedInPage();
+    }
+
+    public async logInAsAdmin() {
+        await this.browser.get('http://localhost:8080/logout');
+        await this.browser.get('http://localhost:8080/login');
+        await this.getInputUsername().sendKeys('admin');
+        await this.getInputPassword().sendKeys('1234', Key.RETURN);
         return await this.waitForLoggedInPage();
     }
 
@@ -40,15 +49,50 @@ export class PageBuilder {
     }
 
     public getInputCategory() {
-        return this.browser.findElements(By.id('categorySelect'));
+        return this.browser.findElement(By.id('categorySelect'));
     }
 
     public getButtonCategory() {
         return this.browser.findElement(By.css('*[data-id="categorySelect"]'));
     }
 
+    public getButtonQuiz() {
+        return this.browser.findElement(By.linkText('Quiz'));
+    }
+
+    public getInputQuestionCount() {
+        return this.browser.findElement(By.id('questionCount'));
+    }
+
+    public getButtonStartQuiz() {
+        return this.browser.findElement(By.css('button.oce-form-button'));
+    }
+
+    public async waitForView(viewName: string) {
+        const locator = By.css(`*[data-view-name='${viewName}']`);
+        const element = await this.browser.findElement(locator);
+        return this.browser.wait(until.elementIsVisible(element), this.timeout);
+    }
+
+    public waitForButtonGoToQuestion() {
+        return this.browser.wait(until.elementLocated(By.linkText('Przejdź do pytania')), this.timeout);
+    }
+
+    public waitForButtonShowDeleteQuestionModal() {
+        return this.browser.wait(until.elementLocated(By.css('*[data-target="#deleteQuestionModal"]')), this.timeout);
+    }
+
+    public waitForButtonDeleteQuestion() {
+        const locator = By.xpath('//*[@id="deleteQuestionModal"]/div/div/div[3]/form/button');
+        return this.browser.wait(until.elementIsVisible(this.browser.findElement(locator)), this.timeout);
+    }
+
     public getSearchCategory() {
         return this.browser.findElement(By.css('*[aria-label="Search"]'));
+    }
+
+    public getButtonSaveQuestion() {
+        return this.browser.findElement(By.css('.oce-question-form-button'));
     }
 
     public getChbxsCorrectAnswer() {

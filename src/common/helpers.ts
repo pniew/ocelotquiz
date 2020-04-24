@@ -21,7 +21,7 @@ export default {
         } else if (x % 10 >= 2 && x % 10 <= 4) {
             return str[1];
         } else {
-            return str[2];
+            return typeof str[2] === 'string' ? str[2] : str[1];
         }
     }
 };

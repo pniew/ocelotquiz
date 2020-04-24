@@ -34,6 +34,13 @@ class QuestionModel extends BaseModel<Question> {
         );
     }
 
+    public async getCountForCategory(categoryId: number): Promise<{ questionCount: number, publicQuestionCount: number }> {
+        const query = "SELECT SUM( `status` = 'public' ) AS publicQuestionCount, COUNT(*) AS questionCount FROM questions WHERE category = ?";
+        const res = <any>(await super.execute(query, [categoryId]))[0];
+        res.privateQuestionCount = res.questionCount - res.publicQuestionCount;
+        return res;
+    }
+
     // Override
     public async getNewerThanForUser(date: Date, userId: number) {
         const query = `SELECT * FROM \`${this.sqlTable}\` WHERE \`created\` > ? AND \`user\` = ?`;

@@ -10,9 +10,13 @@
                 {{/each}} --}}
                 {{#each categoriesTree}}
                 <optgroup label="{{this.name}}">
-                    <option value="{{this.id}}" data-subtext="{{this.questionCount}} {{#numeral this.questionCount "pytanie" "pytania" "pytań"}}{{/numeral}}">{{this.name}}</option>
+                    <option value="{{this.id}}"
+                        data-subtext="{{this.questionCount}} {{#numeral this.questionCount "pytanie" "pytania" "pytań"}}{{/numeral}}">
+                        {{this.name}}</option>
                     {{#each this.subcategories}}
-                    <option value="{{this.id}}" data-subtext="{{this.questionCount}} {{#numeral this.questionCount "pytanie" "pytania" "pytań"}}{{/numeral}}">{{this.name}}</option>
+                    <option value="{{this.id}}"
+                        data-subtext="{{this.questionCount}} {{#numeral this.questionCount "pytanie" "pytania" "pytań"}}{{/numeral}}">
+                        {{this.name}}</option>
                     {{/each}}
                 </optgroup>
                 {{/each}}

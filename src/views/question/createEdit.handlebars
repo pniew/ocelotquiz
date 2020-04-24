@@ -1,142 +1,196 @@
-<div class="pull-right" data-view-name="oce-{{#if question}}edit{{else}}create{{/if}}-question">
-    {{#if question}}
-    <span class="d-inline-block mr-2">
-        {{#if isPublic}}
-        <i class="fa fa-eye fa-lg" data-toggle="tooltip" title="Pytanie jest publiczne"></i>
+<div id="oceApp" data-view-name="oce-{{#if question}}edit{{else}}create{{/if}}-question">
+    <div class="pull-right">
+        {{#if question}}
+        <span class="d-inline-block mr-2">
+            {{#if isPublic}}
+            <i class="fa fa-eye fa-lg" data-toggle="tooltip" title="Pytanie jest publiczne"></i>
+            {{/if}}
+            {{#if isPending}}
+            <i class="fa fa-clock-o fa-lg" data-toggle="tooltip" title="Pytanie oczekuje na akceptację"></i>
+            {{/if}}
+        </span>
+        {{#if isPublicCandidate}}
+        {{#if isPrivate}}
+        <form action="/question/pending/{{question.id}}" method="POST" class="m-0 p-0 d-inline">
+            <button type="submit" class="btn btn-primary mb-2" name="action">
+                <i class="fa fa-share-alt" data-toggle="tooltip"
+                    title="{{#if isUserAdmin}}Upublicznij pytanie{{else}}Poproś o upublicznienie pytania{{/if}}"></i>
+            </button>
+        </form>
+        {{else}}
+        <form action="/question/revoke/{{question.id}}" method="POST" class="m-0 p-0 d-inline">
+            <button type="submit" class="btn btn-primary mb-2" name="action">
+                <i class="fa fa-share fa-rotate-180" data-toggle="tooltip"
+                    title="{{#if isPublic}}Wycofaj upublicznienie{{else}}Wycofaj prośbę o upublicznienie{{/if}}"></i>
+            </button>
+        </form>
         {{/if}}
-        {{#if isPending}}
-        <i class="fa fa-clock-o fa-lg" data-toggle="tooltip" title="Pytanie oczekuje na akceptację"></i>
         {{/if}}
-    </span>
-    {{#if isPrivate}}
-    <form action="/question/pending/{{question.id}}" method="POST" class="m-0 p-0 d-inline">
-        <button type="submit" class="btn btn-primary mb-2" name="action">
-            <i class="fa fa-share-alt" data-toggle="tooltip" title="Poproś o upublicznienie pytania"></i>
+        <button class="btn btn-danger mb-2" data-toggle="modal" data-target="#deleteQuestionModal">
+            <i class="fa fa-trash" data-toggle="tooltip" title="Usuń to pytanie"></i>
         </button>
-    </form>
-    {{else}}
-    <form action="/question/revoke/{{question.id}}" method="POST" class="m-0 p-0 d-inline">
-        <button type="submit" class="btn btn-primary mb-2" name="action">
-            <i class="fa fa-share fa-rotate-180" data-toggle="tooltip" title="Wycofaj prośbę o upublicznienie"></i>
-        </button>
-    </form>
-    {{/if}}
-    <button class="btn btn-danger mb-2" data-toggle="modal" data-target="#deleteQuestionModal">
-        <i class="fa fa-trash" data-toggle="tooltip" title="Usuń to pytanie"></i>
-    </button>
-    {{else}}
-    <a class="btn btn-primary mb-2" href="/question/upload">
-        <i class="fa fa-upload" data-toggle="tooltip" title="Wstaw pytania z pliku"></i>
-    </a>
-    {{/if}}
-</div>
-
-<form action="/question{{#if question}}/{{question.id}}{{/if}}" method="post" class="m-0 oce-question-form"
-    data-question-mode="{{#if question}}edit{{else}}add{{/if}}">
-    <div class="form-group mb-3">
-        <label for="questionTextarea" class="pt-2">Treść pytania:</label>
-        <textarea class="form-control" required id="questionTextarea" rows="3" maxlength="{{maxQuestionLength}}"
-            name="question[text]">{{question.text}}</textarea>
-        <span class="character-count pull-right badge badge-dark" id="charLengthLabel"></span>
-        <input type="hidden" name="question[status]" value="{{question.status}}" />
+        {{else}}
+        <a class="btn btn-primary mb-2" href="/question/upload">
+            <i class="fa fa-upload" data-toggle="tooltip" title="Wstaw pytania z pliku"></i>
+        </a>
+        {{/if}}
     </div>
-    <label>Odpowiedzi:</label>
-    {{#each answers}}
-    <div class="input-group mb-1">
-        <input type="hidden" name="answer[{{@index}}][id]" value="{{this.id}}" />
-        <input type="text" class="form-control" required name="answer[{{@index}}][text]" value="{{this.text}}"
-            aria-label="Treść odpowiedzi" maxlength="{{../maxQuestionLength}}" />
-        <div class="input-group-append">
-            <div class="input-group-text" style="padding-right: 4px;">
-                <div class="custom-control custom-checkbox" aria-label="Poprawna?" title="Czy poprawna?"
-                    data-toggle="tooltip" data-placement="left">
-                    <input type="checkbox" class="custom-control-input oce-checkbox" id="check-{{@index}}"
-                        name="answer[{{@index}}][correct]" value="1" {{#if this.correct}}checked{{/if}} />
-                    <label class="custom-control-label m-0" for="check-{{@index}}"></label>
+
+    <form action="/question{{#if question}}/{{question.id}}{{/if}}" method="post" class="m-0 oce-question-form"
+        data-question-mode="{{#if question}}edit{{else}}add{{/if}}">
+        {{#if returnPath}}
+        <input type="hidden" name="returnTo" value="{{returnPath}}" />
+        {{/if}}
+        <div class="form-group mb-3">
+            <label for="questionTextarea" class="pt-2">Treść pytania:</label>
+            <textarea class="form-control" required id="questionTextarea" rows="3" v-model="questionText"
+                maxlength="{{maxQuestionLength}}" name="question[text]"></textarea>
+            <span class="character-count pull-right badge badge-dark" id="charLengthLabel"></span>
+            <input type="hidden" name="question[status]" value="{{question.status}}" />
+        </div>
+        <label>Odpowiedzi:</label>
+        {{#each answers}}
+        <div class="input-group mb-1">
+            <input type="hidden" name="answer[{{@index}}][id]" value="{{this.id}}" />
+            <input type="text" class="form-control" required name="answer[{{@index}}][text]" value="{{this.text}}"
+                aria-label="Treść odpowiedzi" maxlength="{{../maxQuestionLength}}" />
+            <div class="input-group-append">
+                <div class="input-group-text" style="padding-right: 4px;">
+                    <div class="custom-control custom-checkbox" aria-label="Poprawna?" title="Czy poprawna?"
+                        data-toggle="tooltip" data-placement="left">
+                        <input type="checkbox" class="custom-control-input oce-checkbox" id="check-{{@index}}"
+                            name="answer[{{@index}}][correct]" value="1" {{#if this.correct}}checked{{/if}} />
+                        <label class="custom-control-label m-0" for="check-{{@index}}"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+        <div class="form-group mt-3">
+            <ul class="nav nav-tabs nav-justified mb-2">
+                <li class="nav-item">
+                    <a class="nav-link" style="cursor: pointer;" :class="{'active': !categoryCreation}"
+                        @click="categoryCreation = false" href="javascript:void(0)">Kategorie
+                        publiczne</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" style="cursor: pointer;" :class="{'active': categoryCreation}"
+                        @click="categoryCreation = true" href="javascript:void(0)">Wpisz własną
+                        kategorię</a>
+                </li>
+            </ul>
+            <div class="input-group" :class="{'d-none': categoryCreation}">
+                <select class="form-control custom-select selectpicker" data-live-search="true" data-size="10"
+                    name="category" id="categorySelect">
+                    {{#if privateCategory}}
+                    <optgroup label="AKTUALNA">
+                        <option value="{{privateCategory.id}}" selected>
+                            {{privateCategory.name}}
+                        </option>
+                    </optgroup>
+                    {{/if}}
+                    {{#each categoriesTree}}
+                    <optgroup label="{{this.name}}">
+                        <option value="{{this.id}}" {{#check this.id ../selected}} selected{{/check}}
+                            data-subtext="{{this.questionCount}} {{#numeral this.questionCount "pytanie" "pytania" "pytań"}}{{/numeral}}">
+                            {{this.name}}
+                        </option>
+                        {{#each this.subcategories}}
+                        <option value="{{this.id}}" {{#check this.id ../../selected}} selected{{/check}}
+                            data-subtext="{{this.questionCount}} {{#numeral this.questionCount "pytanie" "pytania" "pytań"}}{{/numeral}}">
+                            {{this.name}}
+                        </option>
+                        {{/each}}
+                    </optgroup>
+                    {{/each}}
+                </select>
+            </div>
+            <div class="input-group" :class="{'d-none': !categoryCreation}">
+                <input type="text" class="form-control text-uppercase" placeholder="Nazwa kategorii" id="categoryName"
+                    name="categoryName" v-model="categoryName" :required="categoryCreation" />
+            </div>
+        </div>
+        <button class="btn btn-primary btn-block mt-2 oce-question-form-button" type="button">Zapisz pytanie</button>
+    </form>
+
+    <!-- Modal -->
+    <div class="modal fade" id="deleteQuestionModal" tabindex="-1" role="dialog"
+        aria-labelledby="deleteQuestionModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteQuestionModalLabel">Potwierdzenie usunięcia</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Czy na pewno chcesz usunąć to pytanie?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
+                    <form action="/question/{{question.id}}?_method=DELETE" method="POST" class="m-0">
+                        <button type="submit" class="btn btn-danger" name="action">Usuń</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-    {{/each}}
-    <div class="form-group mt-3">
-        <label for="categorySelect">Kategoria</label>
-        <select class="form-control custom-select selectpicker" data-live-search="true" data-size="10" name="category"
-            id="categorySelect">
-            {{#each categoriesTree}}
-            <optgroup label="{{this.name}}">
-                <option value="{{this.id}}" {{#check this.id ../selected}} selected{{/check}}>{{this.name}}</option>
-                {{#each this.subcategories}}
-                <option value="{{this.id}}" {{#check this.id ../../selected}} selected{{/check}}>{{this.name}}</option>
-                {{/each}}
-            </optgroup>
-            {{/each}}
-        </select>
-    </div>
-    <small class=""></small>
-    <button class="btn btn-primary btn-block mt-2 oce-question-form-button" type="button">Zapisz pytanie</button>
-</form>
 
-<!-- Modal -->
-<div class="modal fade" id="deleteQuestionModal" tabindex="-1" role="dialog" aria-labelledby="deleteQuestionModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteQuestionModalLabel">Potwierdzenie usunięcia</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+    <div class="modal fade" id="tooFastModal" tabindex="-1" role="dialog" aria-labelledby="tooFastModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tooFastModalLabel">Dodajesz pytania zbyt szybko!</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Prrrr, zwolnij, szalony!</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Ok, poczekam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{#if questionAdded}}
+    <div style="position: absolute; left: 0; top: 30%; width: 100%; pointer-events: none;">
+        <div style="margin: auto; pointer-events: auto;" class="toast" role="alert" aria-live="assertive"
+            aria-atomic="true" data-delay="3500">
+            <div class="toast-header">
+                <strong class="mr-auto">Ocelot</strong>
+                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
-                <p>Czy na pewno chcesz usunąć to pytanie?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
-                <form action="/question/{{question.id}}?_method=DELETE" method="POST" class="m-0">
-                    <button type="submit" class="btn btn-danger" name="action">Usuń</button>
-                </form>
+            <div class="toast-body">
+                Pytanie zostało dodane. <a href="/question/{{questionAdded}}">Przejdź do pytania</a>
             </div>
         </div>
     </div>
+    {{/if}}
 </div>
-
-<div class="modal fade" id="tooFastModal" tabindex="-1" role="dialog" aria-labelledby="tooFastModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="tooFastModalLabel">Dodajesz pytania zbyt szybko!</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p>Prrrr, zwolnij, szalony!</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Ok, poczekam</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-{{#if questionAdded}}
-<div style="position: absolute; left: 0; top: 30%; width: 100%;">
-    <div style="margin: auto" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3500">
-        <div class="toast-header">
-            <strong class="mr-auto">Ocelot</strong>
-            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-        <div class="toast-body">
-            Pytanie zostało dodane. <a href="/question/{{questionAdded}}">Przejdź do pytania</a>
-        </div>
-    </div>
-</div>
-{{/if}}
 
 <script>
+    const vm = new Vue({
+        el: '#oceApp',
+        data: {
+            questionText: '{{question.text}}',
+            categoryCreation: false,
+            categoryName: ''
+        },
+        methods: {
+            toggleCategoryCreation: function () {
+                this.categoryCreation = !this.categoryCreation;
+                this.categoryName = '';
+            }
+        }
+    });
+
     $('.toast').toast('show');
     const textMaxLength = {{ maxQuestionLength }};
     const currentLength = $('#questionTextarea').val().length;

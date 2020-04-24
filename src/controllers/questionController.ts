@@ -1,13 +1,15 @@
 import express from 'express';
 import xlsx from 'xlsx';
 import QuestionModel from 'models/QuestionModel';
-import AnswerModel from 'models/AnswerModel';
+import AnswerModel, { Answer } from 'models/AnswerModel';
 import CategoryModel, { ExtendedCategory } from 'models/CategoryModel';
 import UserModel from 'models/UserModel';
 import settingsCache from 'common/settingsCache';
+import { SettingEnum } from 'src/common/constants';
 import fileUpload from 'express-fileupload';
 import { saveSession, getDistinctArray } from 'common/utils';
 import { OceSession } from 'models/OceSession';
+import categoriesController from './categoriesController';
 
 export default {
     index: async (req: express.Request, res: express.Response) => {
@@ -53,7 +55,7 @@ export default {
             status = 'public';
         }
         await QuestionModel.editById(parseInt(req.params.id), { status });
-        saveSession(req);
+        await saveSession(req);
         res.redirect(`/question/${question.id}`);
     },
 
@@ -64,7 +66,7 @@ export default {
             return res.status(404).send();
         }
         await QuestionModel.editById(parseInt(req.params.id), { status: 'private' });
-        saveSession(req);
+        await saveSession(req);
         res.redirect(`/question/${question.id}`);
     },
 
@@ -90,14 +92,15 @@ export default {
     },
 
     pendingAction: async (req: express.Request, res: express.Response) => {
+        const questionId = parseInt(req.params.id);
         if (req.body.action === 'accept') {
-            await QuestionModel.editById(parseInt(req.params.id), { status: 'public' });
+            await QuestionModel.editById(questionId, { status: 'public' });
         } else if (req.body.action === 'deny') {
-            await QuestionModel.editById(parseInt(req.params.id), { status: 'private' });
+            await QuestionModel.editById(questionId, { status: 'private' });
         } else {
             return res.status(500).send(); // no co ty robisz?
         }
-        saveSession(req);
+        await saveSession(req);
         res.redirect('/questions/admin/pending');
     },
 
@@ -107,23 +110,18 @@ export default {
             return { ...cat, name: cat.name.toUpperCase() };
         });
 
-        const allCategories = (await CategoryModel.getAllOrdered()).map(c => {
-            return { ...c, name: c.name.toUpperCase() };
+        const allCategories = await CategoryModel.getAllWithPublicQuestions(0);
+        const categoriesWithQuestions = await CategoryModel.getAllWithPublicQuestions(1);
+
+        const categoriesTree = allCategories.filter(c => c.parent === null && c.questionCount !== 0).map((topCat: ExtendedCategory) => {
+            const categories = categoriesWithQuestions.filter(cat => cat.parent === topCat.id);
+            topCat.subcategories = categories;
+            delete topCat.parent;
+            return topCat;
         });
-        const categoriesTree = allCategories.map((category: ExtendedCategory) => {
-            if (category.parent !== null) {
-                const topCategory: ExtendedCategory = allCategories.find(cat => cat.id === category.parent);
-                if (topCategory.subcategories === undefined) {
-                    topCategory.subcategories = [];
-                }
-                topCategory.subcategories.push(category);
-                return null;
-            }
-            delete category.parent;
-            return category;
-        }).filter(cat => cat !== null);
-        const maxQuestionLength = settingsCache.get('max-question-length');
-        const defaultAnswerAmount = settingsCache.get('default-answer-amount');
+
+        const maxQuestionLength = settingsCache.get(SettingEnum.maxQuestionLength);
+        const defaultAnswerAmount = settingsCache.get(SettingEnum.defaultAnswerAmount);
 
         const answers = [];
         for (let i = 0; i < defaultAnswerAmount; i++) {
@@ -145,13 +143,17 @@ export default {
     },
 
     upload: async (req: express.Request, res: express.Response) => {
-        const categories = (await CategoryModel.getAll()).map(category => {
-            return {
-                ...category,
-                name: category.name.toUpperCase()
-            };
+        const allCategories = await CategoryModel.getAllWithPublicQuestions(0);
+        const categoriesWithQuestions = await CategoryModel.getAllWithPublicQuestions(1);
+
+        const categoriesTree = allCategories.filter(c => c.parent === null && c.questionCount !== 0).map((topCat: ExtendedCategory) => {
+            const categories = categoriesWithQuestions.filter(cat => cat.parent === topCat.id);
+            topCat.subcategories = categories;
+            delete topCat.parent;
+            return topCat;
         });
-        res.render('question/upload', { title: 'Dodaj pytanie z pliku .xlsx', categories });
+
+        res.render('question/upload', { title: 'Dodaj pytanie z pliku .xlsx', categoriesTree });
     },
 
     canAdd: async (req: express.Request, res: express.Response) => {
@@ -167,22 +169,41 @@ export default {
 
     edit: async (req: express.Request, res: express.Response) => {
         const session = req.session as OceSession;
+        const isAdmin = session.isAdmin;
         const questionId = parseInt(req.params.id);
         const userId = session.userId;
 
         const question = await QuestionModel.getById(questionId);
 
-        if (!question || (question.user !== userId && !session.isAdmin)) {
+        if (!question || (question.user !== userId && !isAdmin)) {
             return res.status(404).send();
         }
 
-        const categoriesTree = await CategoryModel.getTree();
+        const allCategories = await CategoryModel.getAllWithPublicQuestions(0);
+        const categoriesWithQuestions = await CategoryModel.getAllWithPublicQuestions(1);
+
+        const categoriesTree = allCategories.filter(c => c.parent === null).map((topCat: ExtendedCategory) => {
+            const categories = categoriesWithQuestions.filter(cat => cat.parent === topCat.id);
+            topCat.subcategories = categories;
+            delete topCat.parent;
+            return topCat;
+        });
+
+        const isCategoryPublic = categoriesWithQuestions.findIndex(c => c.id === question.category) === -1;
+        const privateCategory = isCategoryPublic ? allCategories.find(c => c.id === question.category) : undefined;
 
         const answers = await AnswerModel.getByQuestionId(questionId);
-        const maxQuestionLength = settingsCache.get('max-question-length');
+        const maxQuestionLength = settingsCache.get(SettingEnum.maxQuestionLength);
         const isPrivate = question.status === 'private';
         const isPublic = question.status === 'public';
         const isPending = question.status === 'pending';
+        const isPublicCandidate = answers.filter(a => !!parseInt(a.correct)).length === 1;
+
+        const returnPath = session.redirectTo;
+        if (returnPath) {
+            delete session.redirectTo;
+            await saveSession(req);
+        }
 
         res.render('question/createEdit', {
             title: 'Pytanie',
@@ -190,10 +211,14 @@ export default {
             isPrivate,
             isPublic,
             isPending,
+            isPublicCandidate,
+            privateCategory,
+            isAdmin,
             answers,
             maxQuestionLength,
             categoriesTree,
-            selected: question.category
+            selected: question.category,
+            returnPath
         });
     },
 
@@ -201,6 +226,14 @@ export default {
         const session = req.session as OceSession;
         const userId = session.userId;
         let insertedId: number;
+
+        const categoryName: string = req.body.categoryName;
+        const categoryId = parseInt(req.body.category);
+        const category = await categoriesController.getOrCreatePrivate({
+            id: categoryId,
+            name: categoryName,
+            description: ''
+        });
 
         if (req.files) {
             try {
@@ -227,27 +260,27 @@ export default {
                 questions.push(question);
 
                 for (const question of questions) {
-                    if (question.text.length > parseInt(settingsCache.get('max-question-length'))) {
+                    if (question.text.length > parseInt(settingsCache.get(SettingEnum.maxQuestionLength))) {
                         return res.render('error', { error: { message: 'Co najmniej jedno z pytań jest zbyt długie!' } });
                     }
-                    if (question.answers.length !== parseInt(settingsCache.get('default-answer-amount'))) {
+                    if (question.answers.length !== parseInt(settingsCache.get(SettingEnum.defaultAnswerAmount))) {
                         return res.render('error', { error: { message: 'Co najmniej jedno z pytań posiada nieprawidłową ilość odpowiedzi!' } });
                     }
                     for (const answer of question.answers) {
-                        if (answer.text.length > parseInt(settingsCache.get('max-question-length'))) {
+                        if (answer.text.length > parseInt(settingsCache.get(SettingEnum.maxQuestionLength))) {
                             return res.render('error', { error: { message: 'Co najmniej jedna z odpowiedzi jest zbyt długa!' } });
                         }
                     }
                 }
 
                 for (const question of questions) {
-                    insertedId = await QuestionModel.insert({ text: question.text, user: userId, category: req.body.category, status: 'private' });
-                    await question.answers.map(async answer => {
+                    insertedId = await QuestionModel.insert({ text: question.text, user: userId, category: category.id, status: 'private' });
+                    await question.answers.map(async (answer: Answer) => {
                         answer.question = insertedId;
                         return await AnswerModel.insert(answer);
                     });
                 }
-                saveSession(req);
+                await saveSession(req);
                 res.redirect('/questions');
             } catch (error) {
                 return res.render('error', { error: { message: 'Nieobługiwany format pliku!' } });
@@ -260,11 +293,11 @@ export default {
 
             const question = req.body.question;
             question.user = userId;
-            question.category = req.body.category;
+            question.category = category.id;
             delete question.status;
 
             insertedId = await QuestionModel.insert(question);
-            await req.body.answer.map(async answer => {
+            await req.body.answer.map(async (answer: Answer) => {
                 answer.question = insertedId;
                 if (!answer.correct) {
                     answer.correct = '0';
@@ -272,7 +305,7 @@ export default {
                 return await AnswerModel.insert(answer);
             });
             req.session.questionAddedId = insertedId;
-            saveSession(req);
+            await saveSession(req);
             res.redirect('/question/create');
         }
     },
@@ -282,7 +315,17 @@ export default {
         const questionId = parseInt(req.params.id);
         const userId = session.userId;
         const question = req.body.question;
-        question.category = req.body.category;
+        const returnPath = req.body.returnTo;
+
+        const categoryName = req.body.categoryName;
+        const categoryId = parseInt(req.body.category);
+        const category = await categoriesController.getOrCreatePrivate({
+            id: categoryId,
+            name: categoryName,
+            description: ''
+        });
+
+        question.category = category.id;
         const oldQuestion = await QuestionModel.getById(questionId);
 
         if (session.isAdmin) {
@@ -308,13 +351,29 @@ export default {
             return AnswerModel.editById(answer.id, answer);
         });
         await Promise.all([updateQuestion, updateAnswers]);
-        saveSession(req);
-        res.redirect('/questions');
+
+        await saveSession(req);
+        res.redirect(returnPath || '/questions');
     },
 
     destroy: async (req: express.Request, res: express.Response) => {
         QuestionModel.deleteById(parseInt(req.params.id));
-        saveSession(req);
+        await saveSession(req);
         res.redirect('/questions');
+    },
+
+    remove: async (req: express.Request, res: express.Response) => {
+        const session = req.session as OceSession;
+        const userId = session.userId;
+        const isUserAdmin = session.isAdmin;
+        const questionIds = req.body.questionIds as number[];
+
+        if (questionIds.length > 0) {
+            const questions = await QuestionModel.getByIdArray(questionIds);
+            const ids = questions.filter(q => isUserAdmin || q.user === userId).map(q => q.id);
+            await QuestionModel.deleteByIdArray(ids);
+        }
+
+        res.status(200).json({ result: 'ok' });
     }
 };

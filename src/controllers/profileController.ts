@@ -3,6 +3,7 @@ import express from 'express';
 import { createCryptoString, saveSession } from 'common/utils';
 import transporter from 'common/nodemailer';
 import settingsCache from 'common/settingsCache';
+import { SettingEnum } from 'src/common/constants';
 import UserModel from 'models/UserModel';
 import { OceSession } from 'src/models/OceSession';
 import QuizRecordsModel from 'src/models/QuizRecordsModel';
@@ -31,35 +32,41 @@ const sendActivationMail = (username: string, email: string, token: string) => {
     });
 };
 
-const redirectWithError = (req: express.Request, res: express.Response, key: string, message: string, returPath: string) => {
+const redirectWithError = async (req: express.Request, res: express.Response, key: string, message: string, returPath: string) => {
     const session = req.session as OceSession;
     if (session.errors === undefined) {
         session.errors = {};
     }
     session.errors.previousBody = req.body;
     session.errors[key] = { message };
-    saveSession(req);
+    await saveSession(req);
     return res.redirect(returPath);
 };
 
 export default {
     // aktualnie lista wszystkich userów bo tak
-    index: async (req: express.Request, res: express.Response) => {
+    index: async (req: express.Request, res: express.Response, next: express.NextFunction) => {
         const session = req.session as OceSession;
-        const user = await UserModel.getById(session.userId);
+        const reqUserId = parseInt(req.params.id) || session.userId;
+        const user = await UserModel.getById(reqUserId);
+
+        if (!user || (user && !session.isAdmin && session.userId !== reqUserId && user.isProfilePublic === 0)) {
+            return next();
+        }
+
         let points = 0;
-        const quizRecords = (await QuizRecordsModel.getByUserIdLimit(session.userId, 15)).map(q => {
+        const quizRecords = (await QuizRecordsModel.getByUserIdLimit(reqUserId, 15)).map(q => {
             points += q.points;
             return { ...q, created: new Date(q.created) };
         });
 
-        res.render('profile/index', { title: 'Użytkownicy', user, quizRecords, totalPoints: points });
+        res.render('profile/index', { title: `Profil - ${user.username}`, user, quizRecords, totalPoints: points });
     },
 
     // rejestracja form
     create: async (req: express.Request, res: express.Response) => {
         const session = req.session as OceSession;
-        const requiredPasswordLength = settingsCache.get('required-password-length');
+        const requiredPasswordLength = settingsCache.get(SettingEnum.requiredPasswordLength);
         const errors = session.errors;
         delete session.errors;
         res.render('profile/register', { title: 'Rejestracja', errors, requiredPasswordLength });
@@ -77,7 +84,7 @@ export default {
             return redirectWithError(req, res, 'username', 'Nie podano nazwy użytkownika!', '/register');
         }
 
-        const requiredPasswordLength = settingsCache.get('required-password-length');
+        const requiredPasswordLength = settingsCache.get(SettingEnum.requiredPasswordLength);
         if (req.body.password === undefined || req.body.password.length < requiredPasswordLength) {
             return redirectWithError(req, res, 'password', `Podane hasło jest zbyt krótkie, minimalnie ${requiredPasswordLength} znaków!`, '/register');
         }
@@ -106,7 +113,7 @@ export default {
 
         session.loggedIn = true;
         session.userId = userId;
-        saveSession(req);
+        await saveSession(req);
         res.redirect('/');
     },
 
@@ -125,7 +132,7 @@ export default {
         const session = req.session as OceSession;
         const errors = session.errors;
         delete session.errors;
-        saveSession(req);
+        await saveSession(req);
         res.render('profile/login', { title: 'Logowanie', errors });
     },
 
@@ -142,8 +149,8 @@ export default {
         }
         session.loggedIn = true;
         session.userId = user.id;
-        session.isAdmin = user.admin;
-        saveSession(req);
+        session.isAdmin = <any>user.admin === 1;
+        await saveSession(req);
         res.redirect('/');
     },
 
@@ -158,12 +165,12 @@ export default {
             return res.render('error', { error: { message: 'Nieprawidłowy token!' } });
         }
 
-        if (new Date().getTime() - parseInt(timestamp) > settingsCache.get('account-activation-token-lifetime') * 1000) {
+        if (new Date().getTime() - parseInt(timestamp) > settingsCache.get(SettingEnum.accountActivationTokenLifetime) * 1000) {
             return res.render('error', { error: { message: 'Token wygasł!' } });
         }
 
         UserModel.editById(user.id, { status: '1' });
-        saveSession(req);
+        await saveSession(req);
         res.redirect('/');
     },
 

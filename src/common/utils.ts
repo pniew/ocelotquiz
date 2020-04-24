@@ -12,15 +12,20 @@ export const createCryptoString = (length: number) => {
     return result.join('');
 };
 
-export const saveSession = (request: Express.Request) => {
-    request.session.save((error) => {
-        if (error) {
-            console.error('Session saving error:', error);
-        }
+export const saveSession = (request: Express.Request): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        request.session.save((error) => {
+            if (error) {
+                console.error('Session saving error:', error);
+                reject(error);
+            } else {
+                resolve();
+            }
+        });
     });
 };
 
-export const shuffleArray = (array: any[]) => {
+export const shuffleArray = <T>(array: T[]) => {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
@@ -48,4 +53,12 @@ export function createObjFromDiffs<T>(original: T, newObj: T) {
         objWithDiffs[key] = newObj[key];
     }
     return objWithDiffs as unknown as T;
+}
+
+export function createObj<A, B>(objA: A, objB: B) {
+    return Object.assign({}, objA, objB) as A & B;
+}
+
+export function toMSQLDate(date: Date) {
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
 }

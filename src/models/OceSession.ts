@@ -4,7 +4,7 @@ export interface OceSession extends Express.Session {
     isAdmin: boolean;
     userId: number;
     quizScore?: QuizScore[];
-    error?: { [key: string]: string | number | Object};
+    error?: { [key: string]: string | number | Object };
     questionAddedId?: number;
 }
 

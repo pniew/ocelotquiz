@@ -1,5 +1,6 @@
 import express from 'express';
 import settingsCache from 'common/settingsCache';
+import { SettingEnum } from 'src/common/constants';
 import { saveSession, shuffleArray } from 'common/utils';
 import QuestionModel from 'models/QuestionModel';
 import CategoryModel, { ExtendedCategory } from 'models/CategoryModel';
@@ -9,7 +10,7 @@ import QuizRecordsModel, { QuizRecords } from 'models/QuizRecordsModel';
 
 export default {
     index: async (req: express.Request, res: express.Response) => {
-        const minQuestionCount: number = settingsCache.getInt('min-question-count');
+        const minQuestionCount: number = settingsCache.getInt(SettingEnum.minQuestionCount);
         const session = req.session as OceSession;
         const currentQuiz = session.quizScore;
         if (currentQuiz && currentQuiz.length > 0) {
@@ -17,8 +18,8 @@ export default {
             if (index !== -1) { return res.redirect('/quiz/start'); }
         }
 
-        const allCategories = await CategoryModel.getAllWithQuestionsCountGt(0);
-        const categoriesWithQuestions = await CategoryModel.getAllWithQuestionsCountGt(1);
+        const allCategories = await CategoryModel.getAllWithPublicQuestions(0);
+        const categoriesWithQuestions = await CategoryModel.getAllWithPublicQuestions(1);
 
         const categoriesTree = allCategories.filter(c => c.parent === null && c.questionCount !== 0).map((topCat: ExtendedCategory) => {
             const categories = categoriesWithQuestions.filter(cat => cat.parent === topCat.id);
@@ -30,7 +31,7 @@ export default {
         const toFewQuestions = session.error?.toFewQuestions;
         delete session.error;
 
-        saveSession(req);
+        await saveSession(req);
 
         res.render('quiz/index', {
             title: 'Quizz',
@@ -45,7 +46,7 @@ export default {
         const categories = Array.isArray(req.body.categories)
             ? req.body.categories.map((x: string) => parseInt(x))
             : [req.body.categories];
-        const minQuestionCount: number = settingsCache.getInt('min-question-count');
+        const minQuestionCount: number = settingsCache.getInt(SettingEnum.minQuestionCount);
         const questionCount = parseInt(req.body.questionCount) > minQuestionCount ? parseInt(req.body.questionCount) : minQuestionCount;
 
         const questionIds = (await QuestionModel.getRandomPublic(categories, questionCount))
@@ -58,7 +59,7 @@ export default {
 
         if (questionIds.length < questionCount) {
             session.error = { toFewQuestions: true };
-            saveSession(req);
+            await saveSession(req);
             return res.redirect('/quiz');
         }
 
@@ -70,14 +71,14 @@ export default {
             } as QuizScore;
         });
 
-        saveSession(req);
+        await saveSession(req);
         res.redirect('start');
     },
 
     quiz: async (req: express.Request, res: express.Response) => {
         const session = req.session as OceSession;
         const scores = session.quizScore;
-        const maxCountdownTime: number = settingsCache.get('quiz-question-time');
+        const maxCountdownTime: number = settingsCache.get(SettingEnum.quizQuestionTime);
         console.log(scores);
         const currentIndex = scores.findIndex(score => !score.selectedAnswerId);
 
@@ -103,11 +104,11 @@ export default {
                 const correctAnswer = answers.find(a => !!parseInt(a.correct as any));
                 currentQuestion.selectedAnswerId = -1;
                 currentQuestion.correctAnswerId = correctAnswer.id;
-                saveSession(req);
+                await saveSession(req);
                 return res.redirect('/quiz/start');
             }
 
-            saveSession(req);
+            await saveSession(req);
             res.render('quiz/showQuestion', {
                 title: 'Quizz',
                 question,
@@ -136,7 +137,7 @@ export default {
                 data: JSON.stringify(scores)
             };
             await QuizRecordsModel.insert(record);
-            saveSession(req);
+            await saveSession(req);
             res.render('quiz/endQuiz', { title: 'Quizz', scores: endScores, points, congrats });
         }
     },
@@ -146,7 +147,7 @@ export default {
         const scores = session.quizScore;
         const answerForQuestionIndex = parseInt(req.body.questionIndex);
         const selectedId = parseInt(req.body.selectedAnswer);
-        const maxCountdownTime: number = settingsCache.get('quiz-question-time');
+        const maxCountdownTime: number = settingsCache.get(SettingEnum.quizQuestionTime);
 
         if (answerForQuestionIndex >= 0 && answerForQuestionIndex < scores.length) {
             const currentQuestion = scores[answerForQuestionIndex];
@@ -160,7 +161,7 @@ export default {
                     currentQuestion.selectedAnswerId = -1;
                 }
                 currentQuestion.correctAnswerId = correctAnswer.id;
-                saveSession(req);
+                await saveSession(req);
                 return res.json({ correctId: correctAnswer.id, selectedId: selectedId });
             }
             return res.json({ correctId: currentQuestion.correctAnswerId, selectedId: currentQuestion.selectedAnswerId });

@@ -1,5 +1,7 @@
 <div class="px-5" data-view-name="oce-quiz-score">
-    {{#if congrats}}<h1>Wspaniale!</h1>{{/if}}
+    {{#if congrats}}
+    <img src="/img/congrats.jpg" alt="Congrats!" class="w-100"/>
+    {{/if}}
     <h1>Otrzymałeś {{points}} {{#numeral points "punkt" "punkty" "punktów"}}{{/numeral}}!</h1>
     <a class="btn btn-primary btn-lg btn-block text-uppercase" href="/quiz" role="button">Jeszcze raz!</a>
 </div>

@@ -1,0 +1,233 @@
+<div class="px-5" data-view-name="oce-start-quiz" id="oceApp">
+    <div class="pull-right mr-2">
+        <span class="d-inline-block mr-2">
+            {{#if isVisibleOnProfile}}
+            <i class="fa fa-eye fa-lg" data-toggle="tooltip" title="Quiz jest udostępniony na profilu"></i>
+            {{/if}}
+        </span>
+        <button class="btn btn-primary">
+            <i class="fa fa-share-alt" title="Udostępnij na profilu" data-toggle="tooltip"></i>
+        </button>
+        <button class="btn btn-primary" @click="callModal('generateToken')">
+            <i class="fa fa-key" title="Wygeneruj token" data-toggle="tooltip"></i>
+        </button>
+        <button class="btn btn-primary">
+            <i class="fa fa-edit" title="Edytuj" data-toggle="tooltip"></i>
+        </button>
+        <button class="btn btn-danger" @click="callModal('deleteQuiz')">
+            <i class="fa fa-trash" title="Usuń" data-toggle="tooltip"></i>
+        </button>
+    </div>
+    <h4>{{quiz.name}}</h4>
+    <div>
+        <ul class="list-group list-group-flush" v-if="quizData.length > 0">
+            <li class="list-group-item oce-exam-question-hover" v-for="item in quizData">
+                <div class="p-1 pull-right oce-controls text-muted"
+                    style="height: 24px; margin-right: -16px; margin-top: -8px;">
+                    <i class="fa fa-pencil" @click="goToQuestion(item.id)" title="Edytuj pytanie"></i>
+                    <i class="fa fa-trash-o" @click="deleteQuestion(item.id)" title="Usuń pytanie"></i>
+                </div>
+                <span>$[item.text]</span>
+            </li>
+        </ul>
+    </div>
+    <div class="p-2" v-if="quizDataLength === 0 && quizData.length === 0">
+        <span>Brak pytań w Quizie. Aby dodać pytania przejdź na stronę <a href="/questions">pytania</a>, zaznacz
+            pytania, a następnie kliknij dodaj do Quizu.</span>
+    </div>
+    <div class="p-4 text-center" v-if="quizDataLength === -1">
+        <div class="fa-4x">
+            <i class="fa fa-spinner fa-pulse"></i>
+        </div>
+    </div>
+    <div class="p-2" v-if="quizDataLength === 0 && quizData.length === 0">
+        <span>Brak pytań w Quizie. Aby dodać pytania przejdź na stronę <a href="/questions">pytania</a>, zaznacz
+            pytania, a następnie kliknij dodaj do Quizu.</span>
+    </div>
+    <div class="mt-4">
+        <h5>Tokeny:</h5>
+        <ul class="list-group list-group-flush" v-if="tokens.length > 0">
+            <li class="list-group-item" v-for="tok in tokens" :key="tok.token">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="text-uppercase">$[tok.token]</span>
+                    <small class="text-muted">Pytania: $[tok.examQuestions]</small>
+                    <small class="text-muted">Czas: $[tok.examDuration] minut</small>
+                    <small :class="{'text-muter': getTokenValidity(tok), 'text-danger': !getTokenValidity(tok)}">Ważny
+                        do: $[getTokenValidTo(tok)]</small>
+                    <div class="text-muted" style="cursor: pointer;">
+                        <i class="fa fa-trash-o" @click="deleteToken(tok)" title="Usuń token"></i>
+                    </div>
+                </div>
+            </li>
+        </ul>
+        <span v-if="!loadingTokens && tokens.length === 0">Brak Tokenów. Wygeneruj <a href="javascript:void(0);"
+                @click="callModal('generateToken')">nowy</a>.</span>
+        <div class="p-4 text-center" v-if="loadingTokens">
+            <div class="fa-2x">
+                <i class="fa fa-spinner fa-pulse"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="actionModal" tabindex="-1" role="dialog" aria-labelledby="actionModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="actionModalLabel">$[actionModal.title]</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form class="oce-modal-form m-0 p-0" @submit="submitModal">
+                    <div class="modal-body">
+                        <p>$[actionModal.message]</p>
+                        <div v-if="actionModal.actionId === 1">
+                            <div class="form-group">
+                                <label for="tokenDuration">Żywotność tokenu (minuty):</label>
+                                <input type="number" class="form-control" id="tokenDuration"
+                                    v-model.number="token.lifetime" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="tokenDuration">Czas quizu (minuty):</label>
+                                <input type="number" class="form-control" id="examDuration"
+                                    v-model.number="token.examDuration" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="tokenQuestionsAmount">Ilość pytań (losowo wybranych):</label>
+                                <input type="number" class="form-control" id="tokenQuestionsAmount"
+                                    v-model.number="token.questionsAmount" min="3" :max="quizDataLength" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
+                        <button v-if="actionModal.actionId === 0" type="submit" class="btn btn-danger"
+                            name="action">Usuń</button>
+                        <button v-if="actionModal.actionId === 1" type="submit" class="btn btn-primary"
+                            name="action">Wygeneruj</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const actions = {
+        deleteQuiz: {
+            actionId: 0,
+            title: 'Usuwanie Quizu',
+            message: 'Czy na pewno chcesz usunąć ten quiz?'
+        },
+        generateToken: {
+            actionId: 1,
+            title: 'Generowanie Tokenu',
+            message: 'Token pozwala posiadaczom na rozwiązanie quizu. Jest wielorazowy i aktywny na wybrany czas (0 = nieskończenie długo)'
+        }
+    }
+    const quizData = [];
+    const vm = new Vue({
+        el: '#oceApp',
+        mounted() {
+            this.fetchTokens();
+        },
+        created() {
+            setInterval(() => {
+                this.dateNow = new Date();
+            });
+        },
+        data: {
+            dateNow: new Date(),
+            quizDataLength: -1,
+            quizData: quizData,
+            actionModal: {
+                actionId: -1,
+                title: '',
+                message: ''
+            },
+            token: {
+                examDuration: 15,
+                lifetime: 15,
+                questionsAmount: -1
+            },
+            tokens: [],
+            loadingTokens: true
+        },
+        methods: {
+            setQuestionsReady: function (length) {
+                this.quizDataLength = length;
+                this.token.questionsAmount = length;
+            },
+            getTokenValidTo: function (token) {
+                const date = new Date(token.validTo).toLocaleString();
+                return token.validTo ? date : '∞';
+            },
+            getTokenValidity: function (token) {
+                const time = new Date(token.validTo).getTime();
+                return !(token.validTo && time < this.dateNow.getTime());
+            },
+            callModal: function (actionName) {
+                this.actionModal = actions[actionName];
+                $('#actionModal').modal('show');
+            },
+            submitModal: function (e) {
+                e.preventDefault();
+                switch (this.actionModal.actionId) {
+                    case 0: this.deleteQuiz(); break;
+                    case 1: this.generateToken(); break;
+                }
+                $('#actionModal').modal('hide');
+            },
+            deleteQuiz: function () {
+                sendAsyncRequest(window.location.pathname, {}, 'DELETE')
+                    .then(res => { window.location.pathname = "/exams" });
+            },
+            goToQuestion: function (id) {
+                sendAsyncRequest('/redirects', { return: window.location.pathname }).then(res => {
+                    window.location.pathname = '/question/' + id;
+                });
+            },
+            deleteQuestion: function (id) {
+                const index = quizData.findIndex(q => q.id === id);
+                quizData.splice(index, 1);
+                questionsAction('removeIds', [id]);
+            },
+            generateToken: function () {
+                sendAsyncRequest(window.location.pathname + '/token', { token: this.token }, 'POST').then(res => {
+                    this.fetchTokens();
+                });
+            },
+            fetchTokens: function () {
+                this.loadingTokens = true;
+                sendAsyncRequest(window.location.pathname + '/tokens', undefined, 'GET').then(res => {
+                    const tokenList = res.tokens;
+                    this.tokens = tokenList;
+                    this.loadingTokens = false;
+                });
+            },
+            deleteToken: function (tokenObj) {
+                sendAsyncRequest(window.location.pathname + '/' + tokenObj.token, undefined, 'DELETE').then(res => {
+                    this.fetchTokens();
+                });
+            },
+        }
+    });
+
+    function fetchQuestions() {
+        vm.quizDataLength = -1;
+        sendAsyncRequest(window.location.pathname + '&ajax=1', undefined, 'GET').then(res => {
+            quizData.splice(0, quizData.length);
+            res.forEach(x => quizData.push(x));
+            vm.setQuestionsReady(quizData.length);
+        });
+    }
+    fetchQuestions();
+
+    function questionsAction(action, questionIds = []) {
+        sendAsyncRequest(window.location.pathname + '/' + action, { questionIds }).then(res => {
+            fetchQuestions();
+        });
+    }
+</script>

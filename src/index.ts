@@ -14,7 +14,12 @@ import categoriesController from 'controllers/categoriesController';
 
 import pool from 'common/database';
 import settingsCache from 'common/settingsCache';
-import quizController from './controllers/quizController';
+import generatedQuizController from './controllers/generatedQuizController';
+import examController from './controllers/examController';
+import { OceSession } from './models/OceSession';
+import { saveSession } from './common/utils';
+import solveExamController from './controllers/solveExamController';
+import tokenController from './controllers/tokenController';
 
 // const MySQLStore = mysqlSession(session);
 var MySQLStore = require('express-mysql-session')(session);
@@ -50,6 +55,13 @@ app.use(session({
 //     });
 // }
 
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const session = req.session as OceSession;
+    res.locals.isUserLogged = session.loggedIn === true;
+    res.locals.isUserAdmin = session.isAdmin === true;
+    next();
+});
+
 app.get('/', indexController.index);
 app.get('/main', indexController.main);
 app.get('/login', profileController.login);
@@ -67,7 +79,7 @@ app.use((req, res, next) => {
     }
 });
 
-function isAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+function isUserAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
     if (req.session && req.session.isAdmin) {
         next();
     }
@@ -75,10 +87,11 @@ function isAdmin(req: express.Request, res: express.Response, next: express.Next
 
 app.get('/profile', profileController.index);
 app.get('/profile/:id', profileController.index);
-app.get('/questions/admin/all', isAdmin, questionController.index);
-app.get('/questions/admin/pending', isAdmin, questionController.pendingIndex);
-app.post('/question/admin/pending/:id', isAdmin, questionController.pendingAction);
+app.get('/questions/admin/all', isUserAdmin, questionController.index);
+app.get('/questions/admin/pending', isUserAdmin, questionController.pendingIndex);
+app.post('/question/admin/pending/:id', isUserAdmin, questionController.pendingAction);
 app.get('/questions', questionController.index);
+app.delete('/questions', questionController.remove);
 app.get('/question/create', questionController.create);
 app.get('/question/upload', questionController.upload);
 app.post('/question', fileUpload(), questionController.store);
@@ -89,19 +102,38 @@ app.get('/question/:id', questionController.edit);
 app.post('/question/:id', questionController.update);
 app.delete('/question/:id', questionController.destroy);
 
-app.get('/quiz', quizController.index);
-app.post('/quiz/generate', quizController.generate);
-app.get('/quiz/start', quizController.quiz);
-app.post('/quiz/next', quizController.answerAction);
+app.get('/exam/:examId/tokens', tokenController.fetchAction);
+app.post('/exam/:examId/token', tokenController.generateAction);
+app.delete('/exam/:examId/:token', tokenController.removeAction);
+app.get('/exams', examController.index);
+app.get('/exam/:quizId', examController.viewExam);
+app.delete('/exam/:quizId', examController.remove);
+app.post('/exam/:quizId/:action', examController.questionActions);
+app.post('/exams', examController.createAction);
+app.get('/solve/:token', solveExamController.solve);
+app.post('/solve/:token/data', solveExamController.getExamData);
+app.post('/solve/:token/answer', solveExamController.answerAction);
+app.post('/solve/:token/submitAnswers', solveExamController.submitAnswersAction);
 
-app.get('/categories', isAdmin, categoriesController.listAll);
-app.get('/category/:id?', isAdmin, categoriesController.edit);
-app.post('/category', isAdmin, categoriesController.actionCreate);
-app.post('/category/:id', isAdmin, categoriesController.actionUpdate);
-app.delete('/category/:id', isAdmin, categoriesController.actionDelete);
+app.get('/quiz', generatedQuizController.index);
+app.post('/quiz/generate', generatedQuizController.generate);
+app.get('/quiz/start', generatedQuizController.quiz);
+app.post('/quiz/next', generatedQuizController.answerAction);
 
-app.get('/settings', isAdmin, settingsController.index);
-app.post('/settings', isAdmin, settingsController.update);
+app.get('/categories', isUserAdmin, categoriesController.listAll);
+app.get('/category/:id?', isUserAdmin, categoriesController.edit);
+app.post('/category', isUserAdmin, categoriesController.actionCreate);
+app.post('/category/:id', isUserAdmin, categoriesController.actionUpdate);
+app.delete('/category/:id', isUserAdmin, categoriesController.actionDelete);
+
+app.get('/settings', isUserAdmin, settingsController.index);
+app.post('/settings', isUserAdmin, settingsController.update);
+
+app.post('/redirects', async (req: express.Request, res: express.Response) => {
+    req.session.redirectTo = req.body.return;
+    await saveSession(req);
+    res.json({});
+});
 
 app.get('/*', (req: express.Request, res: express.Response) => {
     res.render('error', { error: { message: 'Strona nie istnieje' } });

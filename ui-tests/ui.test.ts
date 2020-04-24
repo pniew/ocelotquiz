@@ -1,7 +1,8 @@
 import chromedriver from 'chromedriver';
-import { Builder, By, until, Key } from 'selenium-webdriver';
+import { Builder, Key } from 'selenium-webdriver';
 import { assert } from 'sinon';
 import { PageBuilder } from './ui.page';
+import pool from 'src/common/database';
 
 console.log('Chromedriver Path:', chromedriver.path);
 
@@ -10,13 +11,14 @@ describe('Chrome Webdriver', async function () {
         return await new Builder().forBrowser('chrome').build();
     }
 
-    it('can log in and log out', async function () {
+    it('can log in and log out and change user', async function () {
         const browser = await createBrowser();
         const page = new PageBuilder(browser);
         try {
             await page.logIn();
             await page.getNavLogout().click();
-            await page.waitForLoggedOutPage();
+            await page.logInAsAdmin();
+            await page.getNavLogout().click();
         } finally {
             await browser.quit();
         }
@@ -27,35 +29,39 @@ describe('Chrome Webdriver', async function () {
         const page = new PageBuilder(browser);
         try {
             await page.logIn();
-            await browser.findElement(By.css('a[aria-label="Dodaj pytanie"]')).click();
+            await page.getNavAddQuestion().click();
+            await page.waitForView('oce-create-question');
             await page.getInputQuestion().sendKeys('Question?');
             for (let i = 0; i < 4; i++) {
                 (await page.getInputsAnswer())[i].sendKeys(`Answer...${i}`);
                 (await page.getChbxsCorrectAnswer())[i].click();
             }
             await page.getButtonCategory().click();
-            await page.getSearchCategory().sendKeys('matematyka', Key.RETURN);
-            await browser.findElement(By.css('button[type="submit"]')).click();
-            await browser.wait(until.elementLocated(By.css('*[data-target="#deleteQuestionModal"]')), 1000);
-            await browser.findElement(By.css('*[data-target="#deleteQuestionModal"]')).click();
-            await browser.wait(until.elementLocated(By.xpath('//*[@id="deleteQuestionModal"]/div/div/div[3]/form/button')), 1000);
-            await browser.wait(until.elementIsVisible(browser.findElement(By.xpath('//*[@id="deleteQuestionModal"]/div/div/div[3]/form/button'))), 1000);
-            await browser.findElement(By.xpath('//*[@id="deleteQuestionModal"]/div/div/div[3]/form/button')).click();
+            await page.getSearchCategory().sendKeys('kinematyka', Key.RETURN);
+            await page.getButtonSaveQuestion().click();
+            await page.waitForButtonGoToQuestion().click();
+            await page.waitForButtonShowDeleteQuestionModal().click();
+            await page.waitForButtonDeleteQuestion().click();
         } finally {
+            pool.execute('delete from questions where text = \'Question?\'');
             await browser.quit();
         }
     });
 
-    it('can input 255 characters at most in question field', async function () {
+    it('has to input at least 1 and 255 characters at most in question field', async function () {
         const browser = await createBrowser();
         const page = new PageBuilder(browser);
         try {
             await page.logIn();
             await page.getNavAddQuestion().click();
 
+            await page.getButtonSaveQuestion().click();
+
             await page.getInputQuestion().sendKeys('x'.repeat(254));
             let questionValue = await page.getInputQuestion().getAttribute('value');
             assert.match(questionValue.length, 254);
+
+            await page.getButtonSaveQuestion().click();
 
             await page.getInputQuestion().sendKeys('M');
             questionValue = await page.getInputQuestion().getAttribute('value');

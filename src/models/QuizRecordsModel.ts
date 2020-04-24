@@ -8,7 +8,7 @@ export interface QuizRecords extends Base {
 }
 
 class QuizRecordsModel extends BaseModel<QuizRecords> {
-    public readonly sqlTable = 'quiz';
+    public readonly sqlTable = 'dynamicScores';
 
     public async getByUserId(id: number): Promise<QuizRecords[]> {
         return (await super.getByField('user', id));

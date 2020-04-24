@@ -1,4 +1,5 @@
-<form action="/question/" encType="multipart/form-data" method="post" class="m-0" data-view-name="oce-upload-xlsx">
+<form id="oceApp" action="/question/" encType="multipart/form-data" method="post" class="m-0"
+    data-view-name="oce-upload-xlsx">
     <div class="text-center p-3">
         <img src="/img/example.png" width="300px" />
     </div>
@@ -9,19 +10,61 @@
         </div>
     </div>
     <div class="form-group mt-3">
-        <label for="categorySelect">Kategoria</label>
-        <select class="form-control custom-select selectpicker" data-live-search="true" data-size="5" name="category"
-            id="categorySelect">
-            {{#each categories}}
-            <option value="{{this.id}}" {{#check this.id ../selected}} selected{{/check}}>
-                {{this.name}}</option>
-            {{/each}}
-        </select>
+        <ul class="nav nav-tabs nav-justified mb-2">
+            <li class="nav-item">
+                <a class="nav-link" style="cursor: pointer;" :class="{'active': !categoryCreation}"
+                    @click="categoryCreation = false" href="javascript:void(0)">Kategorie
+                    publiczne</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" style="cursor: pointer;" :class="{'active': categoryCreation}"
+                    @click="categoryCreation = true" href="javascript:void(0)">Wpisz własną
+                    kategorię</a>
+            </li>
+        </ul>
+        <div class="input-group" :class="{'d-none': categoryCreation}">
+            <select class="form-control custom-select selectpicker" data-live-search="true" data-size="10"
+                name="category" id="categorySelect">
+                {{#each categoriesTree}}
+                <optgroup label="{{this.name}}">
+                    <option value="{{this.id}}" {{#check this.id ../selected}} selected{{/check}}
+                        data-subtext="{{this.questionCount}} {{#numeral this.questionCount "pytanie" "pytania" "pytań"}}{{/numeral}}">
+                        {{this.name}}
+                    </option>
+                    {{#each this.subcategories}}
+                    <option value="{{this.id}}" {{#check this.id ../../selected}} selected{{/check}}
+                        data-subtext="{{this.questionCount}} {{#numeral this.questionCount "pytanie" "pytania" "pytań"}}{{/numeral}}">
+                        {{this.name}}
+                    </option>
+                    {{/each}}
+                </optgroup>
+                {{/each}}
+            </select>
+        </div>
+        <div class="input-group" :class="{'d-none': !categoryCreation}">
+            <input type="text" class="form-control text-uppercase" placeholder="Nazwa kategorii" id="categoryName"
+                name="categoryName" v-model="categoryName" :required="categoryCreation" />
+        </div>
     </div>
     <button class="btn btn-primary btn-block mt-2" type="submit" name="action">Dodaj pytanie</button>
 </form>
 
 <script>
+    const vm = new Vue({
+        el: '#oceApp',
+        data: {
+            questionText: '{{question.text}}',
+            categoryCreation: false,
+            categoryName: ''
+        },
+        methods: {
+            toggleCategoryCreation: function () {
+                this.categoryCreation = !this.categoryCreation;
+                this.categoryName = '';
+            }
+        }
+    });
+
     $('input[type="file"]').on('change', function (e) {
         $(this).next('.custom-file-label').html(e.target.files[0].name);
     })

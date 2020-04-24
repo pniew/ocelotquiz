@@ -4,6 +4,7 @@ import helpers from 'common/helpers';
 import nodemailerExpressHandlebars from 'nodemailer-express-handlebars';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
 import path from 'path';
+
 dotenv.config();
 
 const options: SMTPTransport.Options = {

@@ -1,6 +1,7 @@
 import pool from 'common/database';
 import { format as mysqlFormat } from 'mysql2';
 import dotenv from 'dotenv';
+import { getDistinctArray } from 'src/common/utils';
 
 dotenv.config();
 const debugLogs = process.env.DEBUG_LOGS === 'true';
@@ -8,6 +9,10 @@ const debugLogs = process.env.DEBUG_LOGS === 'true';
 export interface Base {
     id?: number;
     created?: Date;
+}
+
+export interface KeyValString {
+    [key: string]: string | number;
 }
 
 export abstract class BaseModel<T extends Base> {
@@ -33,7 +38,15 @@ export abstract class BaseModel<T extends Base> {
 
     protected async getByFieldArray(fieldName: keyof T, valueList: number[]): Promise<T[]> {
         const query = `SELECT * FROM \`${this.sqlTable}\` WHERE \`${fieldName}\` IN (?)`;
-        return (await this.execute(query, [valueList])) as T[];
+        const valueSet = getDistinctArray(valueList);
+        if (valueSet.length > 0) {
+            return (await this.execute(query, [valueSet])) as T[];
+        } else {
+            if (debugLogs) {
+                console.log('Cancelling query as list is empty.');
+            }
+            return [];
+        }
     }
 
     public async getNewerThan(date: Date) {
@@ -63,13 +76,27 @@ export abstract class BaseModel<T extends Base> {
         return result.affectedRows as number;
     }
 
+    public async deleteByIdArray(idList: number[]): Promise<number> {
+        const query = `DELETE FROM \`${this.sqlTable}\` WHERE \`id\` IN (?)`;
+        const valueSet = getDistinctArray(idList);
+        if (valueSet.length > 0) {
+            const result = await this.execute(query, [getDistinctArray(idList)]);
+            return result.affectedRows as number;
+        } else {
+            if (debugLogs) {
+                console.log('Cancelling query as list is empty.');
+            }
+            return 0;
+        }
+    }
+
     protected validateSqlTableName(): void {
         if (!this.sqlTable || this.sqlTable === 'undefined') {
             throw new Error('Table name has not been defined.');
         }
     }
 
-    protected async execute(sql: string, values?: any[]): Promise<{ [key: string]: string | number } & T & T[]> {
+    protected async execute(sql: string, values?: any[]): Promise<KeyValString & T & T[] & KeyValString[]> {
         this.validateSqlTableName();
         const preparedQuery = mysqlFormat(sql, values);
         try {

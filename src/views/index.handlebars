@@ -1,4 +1,4 @@
-<div class="text-center position-relative" data-view-name="oce-home">
+<div class="text-center position-relative" data-view-name="oce-home" id="oceApp">
     {{#if loggedIn}}
     <div class="position-absolute stick-right">
         Witaj, <a href="/profile">{{user.username}}</a>
@@ -12,6 +12,17 @@
         <p class="lead">
             <a class="btn btn-primary btn-lg btn-block text-uppercase" href="/quiz" role="button">Quiz</a>
         </p>
+        <p class="lead">
+            <div class="input-group input-group-lg">
+                <input type="text" class="form-control text-uppercase" minlength="6" maxlength="6"
+                    placeholder="token" v-model.trim="tokenString" />
+                <div class="input-group-append">
+                    <button class="btn btn-primary" @click="goToExam">
+                        <i class="fa fa-arrow-circle-right"></i>
+                    </button>
+                </div>
+            </div>
+        </p>
         {{else}}
         <p class="lead">
             <a class="btn btn-primary btn-lg btn-block" href="/login" role="button">Zaloguj się</a>
@@ -22,3 +33,16 @@
         {{/if}}
     </div>
 </div>
+<script>
+const vm = new Vue({
+        el: '#oceApp',
+        data: {
+            tokenString: ''
+        },
+        methods: {
+            goToExam: function () {
+                window.location.pathname = '/solve/' + this.tokenString;
+            }
+        }
+});
+</script>

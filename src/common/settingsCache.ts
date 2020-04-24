@@ -1,4 +1,5 @@
 import SettingModel from 'models/SettingModel';
+import { SettingEnum } from './constants';
 
 class SettingCache {
     private cacheData: { key: string, value: any }[] = [];
@@ -6,7 +7,7 @@ class SettingCache {
     public async init(): Promise<void> {
         console.log('Initalizing settings cache.');
         for (const setting of await SettingModel.getAll()) {
-            this.set(setting.key, setting.value);
+            this.set(setting.key as SettingEnum, setting.value);
             console.log(`${setting.key} => ${setting.value}`);
         }
     }
@@ -24,15 +25,15 @@ class SettingCache {
         this.init();
     }
 
-    public get(key: string): any {
+    public get(key: SettingEnum): any {
         return this.cacheData.find(el => el.key === key)?.value;
     }
 
-    public getInt(key: string): any {
+    public getInt(key: SettingEnum): any {
         return parseInt(this.cacheData.find(el => el.key === key)?.value);
     }
 
-    public set(key: string, value: any): void {
+    public set(key: SettingEnum, value: any): void {
         const el = this.cacheData.find(el => el.key === key);
         if (el) {
             el.value = value;

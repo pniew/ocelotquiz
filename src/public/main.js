@@ -8,9 +8,9 @@ $(function () {
     $('[data-toggle="tooltip"]').tooltip({ delay: { show: 500, hide: 50 } });
 });
 
-async function sendAsyncRequest(url, data) {
+async function sendAsyncRequest(url, data, method = 'POST') {
     const response = await fetch(url, {
-        method: 'POST',
+        method: method,
         mode: 'cors',
         cache: 'no-cache',
         credentials: 'same-origin',
@@ -18,9 +18,9 @@ async function sendAsyncRequest(url, data) {
             'Content-Type': 'application/json',
             'X-Async-Action': 'async'
         },
-        redirect: 'follow',
+        redirect: 'error',
         referrerPolicy: 'no-referrer',
-        body: JSON.stringify(data)
+        body: data ? JSON.stringify(data) : undefined
     });
     return await response.json();
 }

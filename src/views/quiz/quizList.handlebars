@@ -1,0 +1,87 @@
+<div class="px-5" data-view-name="oce-start-quiz" id="oceApp">
+    <div class="pull-right">
+        <button class="btn btn-primary mb-2" @click="callModal('createExam')">
+            <i class="fa fa-plus-square" data-toggle="tooltip" title="Stwórz nowy quiz"></i>
+        </button>
+    </div>
+    <div>
+        <ol class="list-group list-group-flush">
+            {{#each quizList}}
+            <li class="list-group-item">
+                <a href="/exam/{{this.id}}">{{this.name}}</a>
+            </li>
+            {{/each}}
+        </ol>
+    </div>
+    <!-- Modal -->
+    <div class="modal fade" id="actionModal" tabindex="-1" role="dialog" aria-labelledby="actionModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="actionModalLabel">$[actionModal.title]</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form class="oce-modal-form m-0 p-0" @submit="submitModal">
+                    <div class="modal-body">
+                        <p>$[actionModal.message]</p>
+                        <div class="form-group">
+                            <label for="quizName">Nazwa Quizu:</label>
+                            <input class="form-control" v-model.trim="quizName" id="quizName" required minlength="3"
+                                maxlength="255" />
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
+                        <button v-if="actionModal.actionId === 0" type="submit" class="btn btn-primary"
+                            name="action">Stwórz</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const actions = {
+        createExam: {
+            actionId: 0,
+            title: 'Stwórz nowy Quiz',
+            message: 'Stwórz nowy pusty quiz prywatny.'
+        }
+    }
+    const vm = new Vue({
+        el: '#oceApp',
+        data: {
+            actionModal: {
+                actionId: -1,
+                title: '',
+                message: ''
+            },
+            quizName: ''
+        },
+        methods: {
+            callModal: function (actionName) {
+                this.actionModal = actions[actionName];
+                $('#actionModal').modal('show');
+            },
+            submitModal: function (e) {
+                e.preventDefault();
+                if (this.actionModal.actionId === 0) {
+                    this.createExam();
+                }
+            },
+            createExam: function () {
+                const modalForm = document.querySelector('.oce-modal-form');
+                if (modalForm.reportValidity()) {
+                    sendAsyncRequest(window.location.pathname, { quizName: this.quizName }, 'POST').then(res => {
+                        window.location.reload();
+                    });
+                    $('#actionModal').modal('hide');
+                }
+            }
+        }
+    });
+</script>

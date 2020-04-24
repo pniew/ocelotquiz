@@ -30,11 +30,12 @@
         <button class="btn btn-primary" data-toggle="modal" data-target="#addNewCatModal">
             <i class="fa fa-plus" data-toggle="tooltip" title="Dodaj kategorię podrzędną"></i>
         </button>
-
         {{#unless hideModifyButtons}}
+        {{#unless counts.questionCount}}
         <div class="btn btn-danger" data-toggle="modal" data-target="#deleteCatModal">
             <i class="fa fa-trash" data-toggle="tooltip" title="Usuń"></i>
         </div>
+        {{/unless}}
         {{/unless}}
     </div>
 
@@ -42,6 +43,15 @@
         <h4 class="ml-1 text-uppercase">{{topCategory.name}}</h4>
         <div class="">{{topCategory.description}}</div>
     </div>
+    {{#if counts.questionCount}}
+    <div class="mt-3 px-4">
+        <p class="my-0">Do tej kategorii przypisane {{#numeral counts.questionCount "jest" "są" "jest"}}
+            {{/numeral}} {{counts.questionCount}} {{#numeral counts.questionCount "pytanie" "pytania" "pytań"}}
+            {{/numeral}}.</p>
+        <p class="my-0">Publiczne: {{counts.publicQuestionCount}}</p>
+        <p class="my-0">Prywatne: {{counts.privateQuestionCount}}</p>
+    </div>
+    {{/if}}
 
     {{#if subCategories}}
     <div class="mt-4 px-4">
@@ -195,7 +205,8 @@
                     <div class="form-group">
                         <label for="categoryDescription">Opis</label>
                         <textarea class="form-control" id="categoryDescription" rows="3"
-                            placeholder="Krótki opis kategorii" name="category[description]" required>{{topCategory.description}}</textarea>
+                            placeholder="Krótki opis kategorii" name="category[description]"
+                            required>{{topCategory.description}}</textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
