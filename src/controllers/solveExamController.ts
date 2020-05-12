@@ -1,10 +1,10 @@
 import express from 'express';
-import { saveSession, shuffleArray, toMSQLDate, getDistinctArray } from 'common/utils';
+import { shuffleArray, toMSQLDate, getDistinctArray } from 'common/utils';
 import { OceSession } from 'models/OceSession';
 import ExamModel, { Exam } from 'models/ExamModel';
 import QuestionModel, { Question } from 'models/QuestionModel';
 import AnswerModel, { Answer } from 'models/AnswerModel';
-import ExamProgressModel from 'models/ExamProgressModel';
+import ExamProgressModel, { ExamProgress } from 'models/ExamProgressModel';
 import ExamTokenModel, { ExamToken } from 'models/ExamTokenModel';
 import UserModel from 'src/models/UserModel';
 
@@ -33,7 +33,7 @@ export default {
         if (!examToken) {
             return next();
         } else if (!examProgress?.completed && examToken.validDuration && (examToken.created.getTime() + examToken.validDuration) < new Date().getTime()) {
-            return next();
+            await markExamProgressIfCompleted(examProgress);
         }
 
         return res.render('quiz/solveExamOnePage', { title: 'Exam', hideHeader: true });
@@ -49,64 +49,55 @@ export default {
             UserModel.getById(userId)
         ]);
 
-        if (!examToken) {
+        if (!examToken && !examProgress) {
             return res.json({ result: 'no ok' });
         }
 
-        const exam = await ExamModel.getById(examToken.exam);
+        const exam = await ExamModel.getById(examToken?.exam || examProgress.exam);
         const questions = await QuestionModel.getByIdArray(JSON.parse(exam?.questionIdsArray || '[]'));
         const answers = await AnswerModel.getByQuestionIdArray(questions.map(a => a.id));
 
-        let examSelectedAnswersData = session.selectedAnswersList || []; // JSON.parse(examProgress?.selectedAnswersData || '[]');
-        const progressData: QuestionAnswer[] = JSON.parse(examProgress?.questionsData || '[]');
+        const examSelectedAnswers: number[] = JSON.parse(examProgress?.selectedAnswersData || '[]');
+        const examPreparedQuestions: QuestionAnswer[] = JSON.parse(examProgress?.questionsData || '[]');
 
-        if (progressData.length === 0) {
-            session.selectedAnswersList = [];
-            examSelectedAnswersData = [];
-            await saveSession(req);
+        if (examPreparedQuestions.length === 0) {
+            const shuffledQuestions = await shuffleAndSaveExam(exam, userId, examToken, questions, answers);
+            examPreparedQuestions.push(...shuffledQuestions);
+        } else {
+            await markExamProgressIfCompleted(examProgress);
         }
 
-        if (examProgress?.completed) {
-            examSelectedAnswersData = JSON.parse(examProgress?.selectedAnswersData || '[]');
-        }
-
-        const examProgressData = progressData.length === 0 ? await shuffleAndSaveExam(exam, userId, examToken, questions, answers) : progressData;
-
-        const questionsAnswersList = examProgressData.map(q => {
+        examPreparedQuestions.forEach(q => {
             q.text = questions.find(x => x.id === q.id)?.text;
             q.answers.forEach(a => {
                 a.text = answers.find(x => x.id === a.id)?.text;
             });
             return q;
         });
-        const points = examProgress?.completed ? await countExamScores(questions, answers, JSON.parse(examProgress?.selectedAnswersData || '[]')) : 0;
+
+        const correctQuestionIds = examProgress?.completed ? await getCorrectQuestions(questions, answers, examSelectedAnswers) : [];
 
         res.json({
-            questionsAnswersList,
-            correctAnswers: examProgress?.completed ? answers.filter(x => x.correct === 1 as any) : [],
+            questionsAnswersList: examPreparedQuestions,
+            selectedAnswersList: examSelectedAnswers,
+            correctAnswers: examProgress?.completed ? answers.filter(x => x.correct === 1 as any).map(x => x.id) : [],
+            correctQuestions: correctQuestionIds,
             examName: exam.name,
-            selectedAnswersList: examSelectedAnswersData,
+            username: user.username,
+            points: correctQuestionIds.length,
+            percent: (correctQuestionIds.length / examPreparedQuestions.length),
             startTime: examProgress?.created || new Date().toISOString(),
-            duration: examToken.examDuration,
             completed: examProgress?.completed,
-            points,
-            percent: (points / questionsAnswersList.length),
-            username: user.username
+            examTimeLimit: examProgress?.timeLimit || examToken.examDuration,
+            finishedTime: examProgress?.completed
         });
     },
-    answerAction: async (req: express.Request, res: express.Response) => {
-        const session = req.session as OceSession;
-
-        session.selectedAnswersList = req.body.answers;
-
-        await saveSession(req);
-        res.json({ result: 'ok' });
-    },
-    submitAnswersAction: async (req: express.Request, res: express.Response) => {
+    saveAnswersAction: async (req: express.Request, res: express.Response) => {
         const session = req.session as OceSession;
         const userId = session.userId;
-        const selectedAnswerIds = getDistinctArray(req.body.answers.filter(x => x));
+        const selectedAnswerIds = getDistinctArray<number>(req.body.answers.filter((x: number) => x));
         const reqExamToken = req.params.token;
+        const isCompleted = !!req.body.isCompleted;
 
         const examProgress = await ExamProgressModel.getByTokenForUser(reqExamToken, userId);
 
@@ -116,19 +107,18 @@ export default {
             return res.json({ result: 'no ok, already done' });
         }
 
-        const completed = new Date();
+        examProgress.selectedAnswersData = JSON.stringify(selectedAnswerIds);
+        if (isCompleted) {
+            examProgress.completed = toMSQLDate(new Date());
+        }
 
-        await ExamProgressModel.editById(examProgress.id, { selectedAnswersData: JSON.stringify(selectedAnswerIds), completed: toMSQLDate(completed) });
-        const questions = await QuestionModel.getByIdArray(JSON.parse(examProgress?.questionsData || '[]').map(q => q.id));
-        const answers = await AnswerModel.getByQuestionIdArray(questions.map(a => a.id));
+        await ExamProgressModel.editById(examProgress.id, examProgress);
 
-        const score = await countExamScores(questions, answers, selectedAnswerIds);
-
-        res.json({ result: 'ok', score, perc: score / questions.length });
+        res.json({ result: 'ok' });
     }
 };
 
-export const shuffleAndSaveExam = async (exam: Exam, forUserId: number, withToken: ExamToken, questions: Question[], answers: Answer[]) => {
+export const shuffleAndSaveExam = async (exam: Exam, forUserId: number, token: ExamToken, questions: Question[], answers: Answer[]) => {
     const examQuestionsData = questions.map(q => {
         const answerItems = answers.filter(a => a.question === q.id).map(a => {
             return {
@@ -144,25 +134,37 @@ export const shuffleAndSaveExam = async (exam: Exam, forUserId: number, withToke
 
     shuffleArray(examQuestionsData);
     const len = examQuestionsData.length;
-    const qAmt = withToken.examQuestions;
+    const qAmt = token.examQuestions;
     examQuestionsData.splice(0, len - qAmt);
 
     console.log('Generating new exam for user.');
     shuffleArray(examQuestionsData);
 
-    await ExamProgressModel.insert({
+    const examProgress: ExamProgress = {
         exam: exam.id,
         questionsData: JSON.stringify(examQuestionsData),
-        token: withToken.token,
+        token: token.token,
+        timeLimit: token.examDuration,
         user: forUserId,
         selectedAnswersData: '[]'
-    });
+    };
+
+    const examId = await ExamProgressModel.insert(examProgress);
+    examProgress.id = examId;
 
     return examQuestionsData as QuestionAnswer[];
 };
 
-export const countExamScores = async (questions: Question[], answers: Answer[], selectedAnswerIds: number[]) => {
-    let score = 0;
+export const markExamProgressIfCompleted = async (examProgress: ExamProgress) => {
+    if (examProgress && (examProgress.created.getTime() + examProgress.timeLimit) < new Date().getTime()) {
+        console.log('Marking exam as complete because of timelimit.');
+        const completed = new Date(examProgress.created.getTime() + examProgress.timeLimit);
+        await ExamProgressModel.editById(examProgress.id, { completed: toMSQLDate(completed) });
+    }
+};
+
+export const getCorrectQuestions = async (questions: Question[], answers: Answer[], selectedAnswerIds: number[]) => {
+    const correctQuestionIds: number[] = [];
     questions.forEach(q => {
         const ans = answers.filter(a => a.question === q.id);
         const selected = selectedAnswerIds.filter(s => ans.findIndex(a => a.id === s) !== -1);
@@ -174,8 +176,10 @@ export const countExamScores = async (questions: Question[], answers: Answer[], 
                     allCorrect = false;
                 }
             });
-            score += allCorrect ? 1 : 0;
+            if (allCorrect) {
+                correctQuestionIds.push(q.id);
+            }
         }
     });
-    return score;
+    return correctQuestionIds;
 };

@@ -10,7 +10,9 @@ import QuizRecordsModel, { QuizRecords } from 'models/QuizRecordsModel';
 
 export default {
     index: async (req: express.Request, res: express.Response) => {
-        const minQuestionCount: number = settingsCache.getInt(SettingEnum.minQuestionCount);
+        const isQuick = req.query.quick === 'true';
+        const minQuestionCount: number = isQuick ? 1 : settingsCache.getInt(SettingEnum.minQuestionCount);
+        const maxQuestionCount: number = isQuick ? 5 : 120;
         const session = req.session as OceSession;
         const currentQuiz = session.quizScore;
         if (currentQuiz && currentQuiz.length > 0) {
@@ -37,7 +39,9 @@ export default {
             title: 'Quizz',
             categoriesTree,
             minQuestionCount,
-            toFewQuestions
+            maxQuestionCount,
+            toFewQuestions,
+            isQuick
         });
     },
 
@@ -46,8 +50,8 @@ export default {
         const categories = Array.isArray(req.body.categories)
             ? req.body.categories.map((x: string) => parseInt(x))
             : [req.body.categories];
-        const minQuestionCount: number = settingsCache.getInt(SettingEnum.minQuestionCount);
-        const questionCount = parseInt(req.body.questionCount) > minQuestionCount ? parseInt(req.body.questionCount) : minQuestionCount;
+        // const minQuestionCount: number = settingsCache.getInt(SettingEnum.minQuestionCount);
+        const questionCount = parseInt(req.body.questionCount);// > minQuestionCount ? parseInt(req.body.questionCount) : minQuestionCount;
 
         const questionIds = (await QuestionModel.getRandomPublic(categories, questionCount))
             .filter((x: any) => x.answerCount === 1);

@@ -1,0 +1,138 @@
+<html>
+
+<head>
+    <title>Quiz</title>
+    <style>
+        .exam {
+            break-after: page;
+            margin: 5mm 11mm
+        }
+
+        .exam header .title {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .exam header .subtext {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3mm;
+        }
+
+        .exam .question-list {
+            margin-top: 0;
+        }
+
+        .exam .question-list>li {
+            padding-top: 5mm;
+            page-break-inside: avoid;
+        }
+
+        .answers-list {
+            margin-top: 3mm;
+            margin-bottom: 0mm;
+            list-style: lower-alpha;
+        }
+
+        .h-line {
+            width: 100%;
+            height: 1mm;
+        }
+
+        .exam-key-answers {
+            display: inline-block;
+            vertical-align: top;
+            text-align: justify;
+            margin: auto;
+            padding: 2mm;
+        }
+
+        .exam-key-answers .title {
+            margin: 0;
+        }
+
+        .exam-key-answers ol {
+            padding-left: 6mm;
+        }
+
+        .hidden {
+            visibility: hidden;
+            height: 0;
+        }
+
+        .key-answers-list {
+            margin-top: 1mm;
+            margin-bottom: 3mm;
+            list-style: lower-alpha;
+            min-height: 1em;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        {{#each exams}}
+        <div class="exam">
+            <header>
+                <h3 class="title">{{@root.examName}}</h3>
+                <div class="subtext">
+                    <span>Zestaw {{this.suit}}</span>
+                    {{#if @root.duration}}
+                    <span>Czas trwania: {{@root.duration}}
+                        {{#numeral @root.duration "minuta" "minuty" "minut"}}{{/numeral}}</span>
+                    {{/if}}
+                </div>
+            </header>
+            <ol class="question-list">
+                {{#each this.questions}}
+                <li>
+                    <div class="question-text">{{this.text}}</div>
+                    <div>
+                        <ol class="answers-list">
+                            {{#each this.answers}}
+                            <li>
+                                <span>{{this.text}}</span>
+                            </li>
+                            {{/each}}
+                        </ol>
+                    </div>
+                </li>
+                {{/each}}
+            </ol>
+        </div>
+        {{/each}}
+        <div>Klucze odpowiedzi:</div>
+        <small>Uwaga: Jeśli pole odpowiedzi jest puste, to oznacza to, że żadna z możliwych do wyboru odpowiedzi nie
+            jest prawidłowa</small>
+        <div class="h-line"></div>
+        {{#each exams}}
+        <div class="exam-key-answers">
+            <h4 class="title">Zestaw {{this.suit}}</h4>
+            <ol>
+                {{#each this.questions}}
+                <li>
+                    <div>
+                        <ol class="key-answers-list">
+                            {{#each this.answers}}
+                            <li class="{{#unless this.isCorrect}}hidden{{/unless}}">&nbsp;</li>
+                            {{/each}}
+                        </ol>
+                    </div>
+                </li>
+                {{/each}}
+            </ol>
+        </div>
+        {{/each}}
+    </div>
+</body>
+<script>
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+            window.history.back()
+        }, 200);
+    }, 100);
+</script>
+
+</html>
