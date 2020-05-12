@@ -104,6 +104,7 @@ app.delete('/question/:id', questionController.destroy);
 
 app.get('/exam/:examId/tokens', tokenController.fetchAction);
 app.post('/exam/:examId/token', tokenController.generateAction);
+app.get('/exam/:examId/pdf', examController.generatePDF);
 app.delete('/exam/:examId/:token', tokenController.removeAction);
 app.get('/exams', examController.index);
 app.get('/exam/:quizId', examController.viewExam);
@@ -112,8 +113,7 @@ app.post('/exam/:quizId/:action', examController.questionActions);
 app.post('/exams', examController.createAction);
 app.get('/solve/:token', solveExamController.solve);
 app.post('/solve/:token/data', solveExamController.getExamData);
-app.post('/solve/:token/answer', solveExamController.answerAction);
-app.post('/solve/:token/submitAnswers', solveExamController.submitAnswersAction);
+app.post('/solve/:token/saveAnswers', solveExamController.saveAnswersAction);
 
 app.get('/quiz', generatedQuizController.index);
 app.post('/quiz/generate', generatedQuizController.generate);

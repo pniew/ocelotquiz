@@ -159,7 +159,7 @@ export default {
     canAdd: async (req: express.Request, res: express.Response) => {
         const session = req.session as OceSession;
         const userId = session.userId;
-        const timeout = await QuestionModel.getNewerThanForUser(new Date(new Date().getTime() - 30 * 1000), userId);
+        const timeout = await QuestionModel.getNewerThanForUser(new Date(new Date().getTime() - settingsCache.getInt(SettingEnum.questionAddDelay) * 1000), userId);
         if (timeout.length > 0) {
             return res.json({ ready: false });
         } else {
@@ -286,7 +286,7 @@ export default {
                 return res.render('error', { error: { message: 'Nieobługiwany format pliku!' } });
             }
         } else {
-            const timeout = await QuestionModel.getNewerThanForUser(new Date(new Date().getTime() - 30 * 1000), userId);
+            const timeout = await QuestionModel.getNewerThanForUser(new Date(new Date().getTime() - settingsCache.getInt(SettingEnum.questionAddDelay) * 1000), userId);
             if (timeout.length > 0) {
                 return res.render('error', { error: { message: 'Dodajesz pytania zbyt szybko!' } });
             }

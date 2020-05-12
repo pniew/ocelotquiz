@@ -1,8 +1,9 @@
 import express from 'express';
 import QuestionModel from 'models/QuestionModel';
-import { saveSession, getDistinctArray } from 'src/common/utils';
+import { saveSession, getDistinctArray, shuffleArray } from 'src/common/utils';
 import { OceSession } from 'src/models/OceSession';
 import ExamModel, { Exam } from 'src/models/ExamModel';
+import AnswerModel from 'src/models/AnswerModel';
 
 export default {
     index: async (req: express.Request, res: express.Response) => {
@@ -88,6 +89,50 @@ export default {
         ExamModel.deleteById(parseInt(req.params.quizId));
         await saveSession(req);
         res.json({ result: 'ok' });
+    },
+    generatePDF: async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        const session = req.session as OceSession;
+        const examId = parseInt(req.params.examId);
+        const pdfCopies = parseInt(req.query.copies as string);
+        const examDuration = parseInt(req.query.duration as string);
+        const questionsCount = parseInt(req.query.count as string);
+
+        const duration = examDuration;
+
+        const exam = await ExamModel.getById(examId);
+        const questions = await QuestionModel.getByIdArray(JSON.parse(exam?.questionIdsArray || '[]'));
+        const answers = await AnswerModel.getByQuestionIdArray(questions.map(a => a.id));
+
+        if (session.userId !== exam.user) {
+            return next();
+        }
+
+        const examCopies = [];
+
+        for (let i = 0; i < pdfCopies; i++) {
+            const examQuestionsData = questions.map(q => {
+                const answerItems = answers.filter(a => a.question === q.id).map(a => {
+                    return {
+                        id: a.id,
+                        text: a.text,
+                        isCorrect: a.correct === 1 as any
+                    };
+                });
+                shuffleArray(answerItems);
+                return {
+                    id: q.id,
+                    text: q.text,
+                    answers: answerItems
+                };
+            });
+            shuffleArray(examQuestionsData);
+
+            const len = examQuestionsData.length;
+            examQuestionsData.splice(0, len - questionsCount);
+            examCopies.push({ questions: examQuestionsData, suit: i + 1 });
+        }
+
+        res.render('quiz/printLayout', { layout: false, exams: examCopies, duration, examName: exam.name });
     }
 };
 

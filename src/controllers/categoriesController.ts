@@ -116,11 +116,10 @@ export default {
     },
 
     getOrCreatePrivate: async (category: Category) => {
+        console.log(category);
         category.parent = 33;
         if (category.name) {
             category.name = category.name.toUpperCase();
-        }
-        if (category.name) {
             const catFromDb = await CategoryModel.getByName(category.name);
             if (catFromDb) {
                 return catFromDb;

@@ -1,6 +1,8 @@
 import express from 'express';
 import { OceSession } from 'models/OceSession';
 import ExamTokenModel, { ExamToken } from 'models/ExamTokenModel';
+import ExamModel from 'models/ExamModel';
+import { mathClamp } from 'common/utils';
 
 export default {
     fetchAction: async (req: express.Request, res: express.Response) => {
@@ -24,7 +26,15 @@ export default {
         const examId = parseInt(req.params.examId);
         const lifetime = parseInt(req.body.token.lifetime) * 60 * 1000;
         const examDuration = parseInt(req.body.token.examDuration) * 60 * 1000;
-        const questionsAmount = parseInt(req.body.token.questionsAmount);
+        const questionsCount = parseInt(req.body.token.questionsAmount);
+
+        const exam = await ExamModel.getById(examId);
+
+        if (!exam) {
+            return res.status(400).json({ result: 'no ok' });
+        }
+
+        const examQuestionIds = JSON.parse(exam.questionIdsArray || '[]') as number[];
 
         const tokenString = generateToken(6);
 
@@ -34,7 +44,7 @@ export default {
             exam: examId,
             examDuration,
             validDuration: lifetime,
-            examQuestions: questionsAmount
+            examQuestions: mathClamp(questionsCount, 1, examQuestionIds.length)
         };
 
         const createdId = await ExamTokenModel.insert(token);
