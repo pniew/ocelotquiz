@@ -60,7 +60,11 @@ export default {
             return { ...q, created: new Date(q.created) };
         });
 
-        res.render('profile/index', { title: `Profil - ${user.username}`, user, quizRecords, totalPoints: points });
+        const rankings = await QuizRecordsModel.getRanking();
+        const topRankings = rankings.slice(0, 10);
+        const position = rankings.findIndex(x => x.id === user.id) + 1;
+
+        res.render('profile/index', { title: `Profil - ${user.username}`, user, quizRecords, totalPoints: points, topRankings, position });
     },
 
     // rejestracja form
@@ -93,7 +97,7 @@ export default {
             return redirectWithError(req, res, 'email', 'Podany adres email jest nieprawidłowy!', '/register');
         }
 
-        const user = await UserModel.getByName('req.body.username');
+        const user = await UserModel.getByName(req.body.username);
         if (user) {
             return redirectWithError(req, res, 'username', 'Podany login zajęty!', '/register');
         }

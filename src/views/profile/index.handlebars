@@ -1,11 +1,20 @@
 <div data-view-name="oce-profile">
-   Witaj zalogowany przybyszu: {{user.username}} ({{user.email}}) 
+    Witaj zalogowany przybyszu: {{user.username}} ({{user.email}})
 </div>
-<div>Twoje punkty: {{totalPoints}}</div>
-{{!-- <ul>
-    {{#each quizRecords}}
+<div class="mt-3 px-5 mx-5 d-flex justify-content-between">
+    <div>Twoja pozycja: {{position}}</div>
+    <div>Twoje punkty: {{totalPoints}}</div>
+</div>
+<div class="mt-3 text-center">
+    <h5>TOP 10</h5>
+</div>
+<ol class="px-5 mx-5">
+    {{#each topRankings}}
     <li>
-        <span>{{this.points}} / {{this.length}}</span> <time>{{this.created}}</time>
+        <div class="d-flex justify-content-between">
+            <span>{{this.username}}</span>
+            <span>Punkty: {{this.pointSum}}</span>
+        </div>
     </li>
     {{/each}}
-</ul> --}}
+</ol>
