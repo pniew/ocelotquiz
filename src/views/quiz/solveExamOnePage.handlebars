@@ -10,19 +10,19 @@
         <div>
             <div class="d-flex justify-content-between align-items-center">
                 <button class="btn btn-primary" style="width: 100px;" @click="prevQuestion"
-                    :class="{'disabled': selectedQuestionIndex === 0}">
+                    :class="{'disabled': onFirstQuestion}">
                     <span>Cofnij</span>
                 </button>
                 <div class="text-center">
                     <h1 class="my-1 mx-2">Quiz</h1>
                     <span class="text-break">$[examName]</span>
                 </div>
-                <button v-if="!onLastQuestion || examFinished" class="btn btn-primary" style="width: 100px;" @click="nextQuestion"
-                    :class="{'disabled': selectedQuestionIndex === questions.length - 1}">
+                <button v-if="!onLastQuestion || examFinished" class="btn btn-primary" style="width: 100px;"
+                    @click="nextQuestion" :class="{'disabled': onLastQuestion}">
                     <span>Dalej</span>
                 </button>
                 <button v-if="onLastQuestion && !examFinished" class="btn btn-danger" style="width: 100px;"
-                    @click="submitAnswers">
+                    @click="sendCompletedAnswers()">
                     <span>Zakończ</span>
                 </button>
             </div>
@@ -39,14 +39,16 @@
                 <i class="fa fa-spinner fa-pulse"></i>
             </div>
         </div>
-        <div class="solve-exam-answers mt-4">
+        <div class="solve-exam-answers mt-4 p-1"
+            :class="{'bg-danger rounded': examFinished && !isQuestionCorrect(activeQuestion), 'bg-success rounded': examFinished && isQuestionCorrect(activeQuestion)}">
             <ul class="list-group">
-                <li class="list-group-item pl-2" :class="{'bg-success': isCorrect(answer)}" v-for="answer in activeQuestion.answers" :key="`ANS-${answer.id}`">
+                <li class="list-group-item pl-2" :class="{'bg-success': isCorrect(answer)}"
+                    v-for="answer in activeQuestion.answers" :key="`ANS-${answer.id}`">
                     <div class="d-flex">
                         <div class="align-self-center ml-1">
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input" :id="`answer-${answer.id}-chkbx`"
-                                    v-model="selectedAnswersIds" :value="answer.id" @change="sendAnswers"
+                                    v-model="selectedAnswersIds" :value="answer.id" @change="saveAnswers"
                                     :disabled="examFinished">
                                 <label class="custom-control-label" :for="`answer-${answer.id}-chkbx`"></label>
                             </div>
@@ -58,7 +60,7 @@
                 </li>
             </ul>
         </div>
-        <div class="solve-exam-footer mt-4">
+        <div class="solve-exam-footer mt-4 bg-white">
             <div class="text-center">
                 <button v-for="i in questions.length" class="btn btn-question-index"
                     :class="{'btn-primary': isSelected(i), 'btn-outline-primary': !isSelected(i)}"
@@ -70,55 +72,33 @@
     </div>
 </div>
 <script>
-    let startTime = new Date().getTime();
-    let duration = 0;
-
-    let tickTockInterval = setInterval(function () {
-        const current = new Date().getTime();
-        if (duration) {
-            Vue.set(vm, 'pendingTime', duration - (current - startTime));
-        } else {
-            Vue.set(vm, 'pendingTime', (current - startTime));
-        }
-        if (duration !== 0 && vm.pendingTime <= 0) {
-            clearInterval(tickTockInterval);
-        }
-    }, 1000);
-
-    sendAsyncRequest(window.location.pathname + '/data', { startTime }, 'POST').then(res => {
-        console.log(res);
-        vm.examScores.points = res.points;
-        vm.examScores.percent = (res.percent * 100).toFixed(2);
-        vm.examFinished = !!res.completed;
-        Vue.set(vm, 'username', res.username);
-        Vue.set(vm, 'correctAnswers', res.correctAnswers);
-        vm.questions.splice(0, vm.questions.length);
-        vm.loadingExam = false;
-        vm.examName = res.examName;
-        startTime = new Date(res.startTime);
-        duration = res.duration * 1000;
-        if (res.questionsAnswersList) {
-            res.questionsAnswersList?.forEach(x => vm.questions.push(x));
-        }
-        if (res.selectedAnswersList) {
-            vm.selectedAnswersIds.push(...res.selectedAnswersList);
-        }
-    });
-
     const vm = new Vue({
         el: '#oceApp',
+        mounted() {
+            this.fetchData();
+        },
+        created() {
+            setInterval(() => {
+                this.dateNow = new Date();
+            }, 1000);
+        },
         data: {
+            dateNow: new Date(),
+            startDate: new Date(),
             examName: '',
             loadingExam: true,
             selectedQuestionIndex: 0,
             selectedAnswersIds: [],
-            pendingTime: 0,
+            examTimeLimit: 0,
+            correctQuestions: [],
             correctAnswers: [],
             timeleft: 0,
             questions: [],
             examScores: { points: 0, percent: 0 },
             examFinished: false,
-            username: ''
+            username: '',
+            finishedTime: undefined,
+            sendRequestReady: true
         },
         methods: {
             prevQuestion: function () {
@@ -135,28 +115,69 @@
             isSelected: function (index) {
                 return this.selectedQuestionIndex + 1 === index;
             },
-            isCorrect: function (ans) {
-                return this.correctAnswers.findIndex(x => x.id === ans.id) >= 0;
+            isCorrect: function (answer) {
+                return this.correctAnswers.includes(answer.id);
             },
-            getTime: function () {
-                const time = this.pendingTime > 0 ? this.pendingTime : 0;
-                const seconds = (Math.round(time / 1000) % 60).toString().padStart(2, '0');
-                const minutes = (Math.round(time / 60000) % 60).toString().padStart(2, '0');
-                return `${minutes}:${seconds}`;
+            isIncorrectSelected: function (answer) {
+                return this.examFinished && this.selectedAnswersIds.includes(answer.id) && !this.isCorrect(answer);
             },
-            sendAnswers: function () {
-                sendAsyncRequest(window.location.pathname + '/answer', { answers: this.selectedAnswersIds }, 'POST').then(res => {
+            isQuestionCorrect: function (question) {
+                return this.correctQuestions.includes(question.id);
+            },
+            getTime: function (format = true) {
+                let time = 0;
+                if (this.examFinished) {
+                    time = this.finishedTime?.getTime() - this.startDate.getTime();
+                } else {
+                    time = this.dateNow.getTime() - this.startDate.getTime();
+                    if (this.examTimeLimit > 0) {
+                        time = this.examTimeLimit - time;
+                    }
+                }
+                if (time < 0) {
+                    time = 0;
+                    this.fetchData();
+                }
 
+                const seconds = (Math.floor(time / 1000) % 60).toString().padStart(2, '0');
+                const minutes = (Math.floor(time / 60000) % 60).toString().padStart(2, '0');
+                return format ? `${minutes}:${seconds}` : time;
+            },
+            fetchData: function () {
+                sendAsyncRequest(window.location.pathname + '/data', { startDate: this.startDate }, 'POST').then(res => {
+                    console.log(res);
+                    this.examScores.points = res.points;
+                    this.examScores.percent = (res.percent * 100).toFixed(2);
+                    this.examFinished = !!res.completed;
+                    this.examTimeLimit = res.examTimeLimit;
+                    Vue.set(this, 'username', res.username);
+                    Vue.set(this, 'correctQuestions', res.correctQuestions);
+                    Vue.set(this, 'correctAnswers', res.correctAnswers);
+                    this.finishedTime = new Date(res.finishedTime);
+                    this.questions.splice(0, this.questions.length);
+                    this.loadingExam = false;
+                    this.examName = res.examName;
+                    this.startDate = new Date(res.startTime);
+                    duration = res.duration * 1000;
+                    if (res.questionsAnswersList) {
+                        res.questionsAnswersList?.forEach(x => this.questions.push(x));
+                    }
+                    if (res.selectedAnswersList) {
+                        this.selectedAnswersIds.push(...res.selectedAnswersList);
+                    }
                 });
             },
-            submitAnswers: function () {
+            saveAnswers: function () {
+                this.sendRequestReady = false;
+                sendAsyncRequest(window.location.pathname + '/saveAnswers', { answers: this.selectedAnswersIds, isCompleted: false }, 'POST').then(res => {
+                    this.sendRequestReady = true;
+                });
+            },
+            sendCompletedAnswers: function () {
                 if (confirm("Czy na pewno chcesz zatwierdzić pytanie? Po zatwierdzeniu nie będzie można edytować odpowiedzi.")) {
-                    sendAsyncRequest(window.location.pathname + '/submitAnswers', { answers: this.selectedAnswersIds }, 'POST').then(res => {
-                        console.log(res);
-                        vm.examScores.points = res.points;
-                        vm.examScores.percent = (res.percent * 100).toFixed(2);
-                        vm.examFinished = !!res.completed;
-                        window.location.reload();
+                    sendAsyncRequest(window.location.pathname + '/saveAnswers', { answers: this.selectedAnswersIds, isCompleted: true }, 'POST').then(res => {
+                        this.fetchData();
+                        this.selectQuestion(0);
                     });
                 }
             }
@@ -167,6 +188,9 @@
                     return {};
                 }
                 return this.questions[this.selectedQuestionIndex];
+            },
+            onFirstQuestion: function () {
+                return this.selectedQuestionIndex === 0;
             },
             onLastQuestion: function () {
                 return this.questions.length > 0 && this.selectedQuestionIndex === this.questions.length - 1;

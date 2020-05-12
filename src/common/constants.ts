@@ -5,5 +5,6 @@ export enum SettingEnum {
     defaultAnswerAmount = 'default-answer-amount',
     defaultQuizLifetime = 'default-quiz-lifetime',
     accountActivationTokenLifetime = 'account-activation-token-lifetime',
-    maxQuestionLength = 'max-question-length'
+    maxQuestionLength = 'max-question-length',
+    questionAddDelay = 'question-add-delay'
 }

@@ -62,3 +62,7 @@ export function createObj<A, B>(objA: A, objB: B) {
 export function toMSQLDate(date: Date) {
     return new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
 }
+
+export function mathClamp(x: number, min: number, max: number) {
+    return Math.min(Math.max(x, min), max);
+}

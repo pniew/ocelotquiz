@@ -5,14 +5,11 @@
             <i class="fa fa-eye fa-lg" data-toggle="tooltip" title="Quiz jest udostępniony na profilu"></i>
             {{/if}}
         </span>
-        <button class="btn btn-primary">
-            <i class="fa fa-share-alt" title="Udostępnij na profilu" data-toggle="tooltip"></i>
+        <button class="btn btn-primary" @click="callModal('generatePDF')">
+            <i class="fa fa-print" title="Generuj PDF" data-toggle="tooltip"></i>
         </button>
         <button class="btn btn-primary" @click="callModal('generateToken')">
             <i class="fa fa-key" title="Wygeneruj token" data-toggle="tooltip"></i>
-        </button>
-        <button class="btn btn-primary">
-            <i class="fa fa-edit" title="Edytuj" data-toggle="tooltip"></i>
         </button>
         <button class="btn btn-danger" @click="callModal('deleteQuiz')">
             <i class="fa fa-trash" title="Usuń" data-toggle="tooltip"></i>
@@ -40,10 +37,6 @@
             <i class="fa fa-spinner fa-pulse"></i>
         </div>
     </div>
-    <div class="p-2" v-if="quizDataLength === 0 && quizData.length === 0">
-        <span>Brak pytań w Quizie. Aby dodać pytania przejdź na stronę <a href="/questions">pytania</a>, zaznacz
-            pytania, a następnie kliknij dodaj do Quizu.</span>
-    </div>
     <div class="mt-4">
         <h5>Tokeny:</h5>
         <ul class="list-group list-group-flush" v-if="tokens.length > 0">
@@ -60,8 +53,10 @@
                 </div>
             </li>
         </ul>
-        <span v-if="!loadingTokens && tokens.length === 0">Brak Tokenów. Wygeneruj <a href="javascript:void(0);"
-                @click="callModal('generateToken')">nowy</a>.</span>
+        <span class="p-2" v-if="!loadingTokens && tokens.length === 0 && quizDataLength >= 3">Brak Tokenów. Wygeneruj <a
+                href="javascript:void(0);" @click="callModal('generateToken')">nowy</a>.</span>
+        <span class="p-2" v-if="!loadingTokens && tokens.length === 0 && quizDataLength < 3">Minimalnma ilość pytań to 3. <a
+                href="/questions">Dodaj pytania</a> do quizu.</span>
         <div class="p-4 text-center" v-if="loadingTokens">
             <div class="fa-2x">
                 <i class="fa fa-spinner fa-pulse"></i>
@@ -100,13 +95,31 @@
                                     v-model.number="token.questionsAmount" min="3" :max="quizDataLength" required>
                             </div>
                         </div>
+                        <div v-if="actionModal.actionId === 2">
+                            <div class="form-group">
+                                <label for="pdfCopies">Ilość unikalnie losowanych kopii:</label>
+                                <input type="number" class="form-control" id="pdfCopies" v-model.number="pdf.copies"
+                                    min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="tokenDuration">Czas quizu (minuty):</label>
+                                <input type="number" class="form-control" id="examDuration"
+                                    v-model.number="pdf.examDuration" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="tokenQuestionsAmount">Ilość pytań (losowo wybranych):</label>
+                                <input type="number" class="form-control" id="tokenQuestionsAmount"
+                                    v-model.number="pdf.questionsAmount" min="3" :max="quizDataLength" required>
+                            </div>
+                        </div>
+                        <small class="m-0 text-danger" v-if="actionModal.actionId === 2">Pamiętaj o wyłączeniu nagłówka i stopki przy drukowaniu.</small>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Anuluj</button>
                         <button v-if="actionModal.actionId === 0" type="submit" class="btn btn-danger"
                             name="action">Usuń</button>
-                        <button v-if="actionModal.actionId === 1" type="submit" class="btn btn-primary"
-                            name="action">Wygeneruj</button>
+                        <button v-if="actionModal.actionId === 1 || actionModal.actionId === 2" type="submit"
+                            class="btn btn-primary" name="action">Wygeneruj</button>
                     </div>
                 </form>
             </div>
@@ -125,6 +138,11 @@
             actionId: 1,
             title: 'Generowanie Tokenu',
             message: 'Token pozwala posiadaczom na rozwiązanie quizu. Jest wielorazowy i aktywny na wybrany czas (0 = nieskończenie długo)'
+        },
+        generatePDF: {
+            actionId: 2,
+            title: 'Generowanie Quizu do PDFa',
+            message: 'Wygeneruj PDFa wraz z kluczem odpowiedzi.'
         }
     }
     const quizData = [];
@@ -153,12 +171,18 @@
                 questionsAmount: -1
             },
             tokens: [],
-            loadingTokens: true
+            loadingTokens: true,
+            pdf: {
+                copies: 1,
+                examDuration: 15,
+                questionsAmount: -1
+            }
         },
         methods: {
             setQuestionsReady: function (length) {
                 this.quizDataLength = length;
                 this.token.questionsAmount = length;
+                this.pdf.questionsAmount = length;
             },
             getTokenValidTo: function (token) {
                 const date = new Date(token.validTo).toLocaleString();
@@ -177,6 +201,7 @@
                 switch (this.actionModal.actionId) {
                     case 0: this.deleteQuiz(); break;
                     case 1: this.generateToken(); break;
+                    case 2: this.generatePDF(); break;
                 }
                 $('#actionModal').modal('hide');
             },
@@ -193,6 +218,10 @@
                 const index = quizData.findIndex(q => q.id === id);
                 quizData.splice(index, 1);
                 questionsAction('removeIds', [id]);
+            },
+            generatePDF: function () {
+                const link = `${window.location.pathname}/pdf?count=${this.pdf.questionsAmount}&copies=${this.pdf.copies}&duration=${this.pdf.examDuration}`;
+                window.location.href = link;
             },
             generateToken: function () {
                 sendAsyncRequest(window.location.pathname + '/token', { token: this.token }, 'POST').then(res => {

@@ -6,7 +6,9 @@ export interface ExamProgress extends Base {
     questionsData: string;
     selectedAnswersData: string;
     token: string;
+    timeLimit?: number;
     completed?: string;
+    startTime?: Date;
 }
 
 class ExamProgressModel extends BaseModel<ExamProgress> {
