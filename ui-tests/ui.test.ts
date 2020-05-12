@@ -1,5 +1,5 @@
 import chromedriver from 'chromedriver';
-import { Builder, Key } from 'selenium-webdriver';
+import { Builder, Key, By } from 'selenium-webdriver';
 import { assert } from 'sinon';
 import { PageBuilder } from './ui.page';
 import pool from 'src/common/database';
@@ -95,6 +95,27 @@ describe('Chrome Webdriver', async function () {
             await answerInputs[0].sendKeys('XXX');
             questionValue = await answerInputs[0].getAttribute('value');
             assert.match(questionValue.length, 255);
+        } finally {
+            await browser.quit();
+        }
+    });
+
+    it('can start quick quiz', async function () {
+        const browser = await createBrowser();
+        const page = new PageBuilder(browser);
+        try {
+            await page.logIn();
+            await page.getButtonStartQuickQuiz().click();
+            await page.waitForView('oce-start-quiz');
+            // await page.getInputQuestionCount().sendKeys(Key.chord(Key.CONTROL, 'a'), '2');
+
+            await page.getButtonBeginQuiz().click();
+
+            await page.waitForView('oce-quiz-question');
+            await (await page.findElementWait(By.css('.oce-answer-btn'))).click();
+
+            await page.waitForView('oce-quiz-score');
+            await browser.sleep(2000);
         } finally {
             await browser.quit();
         }

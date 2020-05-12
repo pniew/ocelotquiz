@@ -5,11 +5,20 @@ export const users: User[] = [{
     email: 'patryk@checinski.dev',
     username: 'pchecinski',
     password: '1234',
-    activationToken: 'abc123'
+    activationToken: 'abc123',
+    admin: 0
 }, {
     id: 2,
     email: 'mail@example.com',
     username: 'example',
     password: 'examplepw',
-    activationToken: 'exampleToken'
+    activationToken: 'exampleToken',
+    admin: 0
+}, {
+    id: 3,
+    email: 'admin@admin.com',
+    username: 'admin',
+    password: 'adminpw',
+    activationToken: 'exampleAdminToken',
+    admin: 1
 }];

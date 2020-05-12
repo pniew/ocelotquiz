@@ -1,4 +1,4 @@
-import { By, WebDriver, until, Key } from 'selenium-webdriver';
+import { By, WebDriver, until, Key, Locator } from 'selenium-webdriver';
 
 export class PageBuilder {
     constructor(public readonly browser: WebDriver, private timeout: number = 5000) { }
@@ -52,6 +52,10 @@ export class PageBuilder {
         return this.browser.findElement(By.id('categorySelect'));
     }
 
+    public getInputQuestionCount() {
+        return this.browser.findElement(By.css('#questionCount'));
+    }
+
     public getButtonCategory() {
         return this.browser.findElement(By.css('*[data-id="categorySelect"]'));
     }
@@ -60,18 +64,22 @@ export class PageBuilder {
         return this.browser.findElement(By.linkText('Quiz'));
     }
 
-    public getInputQuestionCount() {
-        return this.browser.findElement(By.id('questionCount'));
+    public getButtonBeginQuiz() {
+        return this.browser.findElement(By.css('button.oce-form-button'));
     }
 
-    public getButtonStartQuiz() {
-        return this.browser.findElement(By.css('button.oce-form-button'));
+    public getButtonStartQuickQuiz() {
+        return this.browser.findElement(By.css('a.btn'));
     }
 
     public async waitForView(viewName: string) {
         const locator = By.css(`*[data-view-name='${viewName}']`);
-        const element = await this.browser.findElement(locator);
-        return this.browser.wait(until.elementIsVisible(element), this.timeout);
+        // const element = await this.browser.findElement(locator);
+        return await this.browser.wait(until.elementLocated(locator), this.timeout);
+    }
+
+    public async findElementWait(locator: Locator) {
+        return await this.browser.wait(until.elementLocated(locator), this.timeout);
     }
 
     public waitForButtonGoToQuestion() {

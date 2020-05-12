@@ -27,11 +27,19 @@ export const questionsAnswers = [
             { id: 3, text: 'A3', question: 1, correct: 0 },
             { id: 4, text: 'A4', question: 1, correct: 0 }
         ],
+        creator: {
+            id: 1,
+            username: 'pchecinski',
+            email: 'patryk@checinski.dev',
+            password: '1234',
+            activationToken: 'abc123',
+            admin: false
+        },
         isPublic: false,
         user: 1,
         status: 'btn-secondary fa-circle',
         statusDescription: 'Pytanie prywatne',
-        category: { description: 'string', id: 1, name: 'C1' }
+        category: { description: 'string', id: 1, name: 'C1', parent: null }
     },
     {
         id: 2,
@@ -41,11 +49,19 @@ export const questionsAnswers = [
             { id: 6, text: 'B2', question: 2, correct: 1 },
             { id: 7, text: 'B3', question: 2, correct: 0 }
         ],
+        creator: {
+            id: 1,
+            username: 'pchecinski',
+            email: 'patryk@checinski.dev',
+            password: '1234',
+            activationToken: 'abc123',
+            admin: false
+        },
         isPublic: false,
         user: 1,
         status: 'btn-secondary fa-circle',
         statusDescription: 'Pytanie prywatne',
-        category: { description: 'string2', id: 2, name: 'C2' }
+        category: { description: 'string2', id: 2, name: 'C2', parent: null }
     }
 ];
 
@@ -60,15 +76,15 @@ export const questionEditFormData = {
         { id: '51', text: '11' },
         { id: '52', text: '20', correct: '1' }
     ],
-    category: '1'
+    category: 1
 };
 
 export const questionsParseData = [
-    { text: 'Pytanie 1', user: 1, category: '1' },
-    { text: 'Pytanie 2', user: 1, category: '1' },
-    { text: 'Pytanie 3', user: 1, category: '1' },
-    { text: 'Pytanie 4', user: 1, category: '1' },
-    { text: 'Pytanie 5', user: 1, category: '1' }
+    { text: 'Pytanie 1', user: 1, category: 1 },
+    { text: 'Pytanie 2', user: 1, category: 1 },
+    { text: 'Pytanie 3', user: 1, category: 1 },
+    { text: 'Pytanie 4', user: 1, category: 1 },
+    { text: 'Pytanie 5', user: 1, category: 1 }
 ];
 
 export const answersParseData = [

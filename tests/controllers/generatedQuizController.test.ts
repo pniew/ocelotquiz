@@ -12,9 +12,9 @@ import path from 'path';
 import fs from 'fs';
 import * as usersMock from '../mocks/users.mock';
 import * as Utils from 'src/common/utils';
-import categoriesController from 'controllers/categoriesController';
+import generatedQuizController from 'src/controllers/generatedQuizController';
 
-describe('Question Controller', () => {
+describe('Generated Quiz Controller', () => {
     afterEach(() => {
         // Restore the default sandbox here
         sinon.restore();
@@ -25,111 +25,42 @@ describe('Question Controller', () => {
         sinon.stub(Utils, 'saveSession').resolves();
     });
 
-    it('index: should get a list of questions for normal user', async () => {
-        const req = { session: { userId: 1, isAdmin: false } };
+    it('index: should show quiz page', async () => {
+        const req = { session: { userId: 1, isAdmin: false }, query: {} };
         const res = { render: sinon.spy() };
 
-        const usersStub = sinon.stub(UserModel, 'getByIdArray').resolves(usersMock.users);
-        const questionStub = sinon.stub(QuestionModel, 'getByUser').resolves(mock.questions.filter(question => question.user === req.session.userId));
-        const answerStub = sinon.stub(AnswerModel, 'getByQuestionIdArray').resolves(mock.answers as any); // TODO: Fix any type (Answer)
-        const categoriesStub = sinon.stub(CategoryModel, 'getByIdArray').resolves(categoriesMock.categories as any); // TODO: Fix any type (Category)
+        sinon.stub(UserModel, 'getByIdArray').resolves(usersMock.users);
+        sinon.stub(QuestionModel, 'getByUser').resolves(mock.questions.filter(question => question.user === req.session.userId));
+        sinon.stub(AnswerModel, 'getByQuestionIdArray').resolves(mock.answers as any); // TODO: Fix any type (Answer)
+        sinon.stub(CategoryModel, 'getByIdArray').resolves(categoriesMock.categories as any); // TODO: Fix any type (Category)
+        sinon.stub(CategoryModel, 'getAllWithPublicQuestions').resolves(categoriesMock.categories as any); // TODO: Fix any type (Category)
 
-        await questionController.index(req as any, res as any);
+        await generatedQuizController.index(req as any, res as any);
 
-        const expectedResult = {
-            data: [{
-                answers: [{ correct: 1, id: 1, question: 1, text: 'A1' }, { correct: 0, id: 2, question: 1, text: 'A2' }, { correct: 0, id: 3, question: 1, text: 'A3' }, { correct: 0, id: 4, question: 1, text: 'A4' }],
-                category: { description: 'string', id: 1, name: 'C1', parent: null },
-                creator: {
-                    activationToken: 'abc123',
-                    admin: 0,
-                    email: 'patryk@checinski.dev',
-                    id: 1,
-                    password: '1234',
-                    username: 'pchecinski'
-                },
-                id: 1,
-                isPublic: false,
-                status: 'btn-secondary fa-circle',
-                statusDescription: 'Pytanie prywatne',
-                text: 'Question1',
-                user: 1
-            }, {
-                answers: [{ correct: 1, id: 5, question: 2, text: 'B1' }, { correct: 1, id: 6, question: 2, text: 'B2' }, { correct: 0, id: 7, question: 2, text: 'B3' }],
-                category: { description: 'string2', id: 2, name: 'C2', parent: null },
-                creator: {
-                    activationToken: 'abc123',
-                    admin: 0,
-                    email: 'patryk@checinski.dev',
-                    id: 1,
-                    password: '1234',
-                    username: 'pchecinski'
-                },
-                id: 2,
-                isPublic: false,
-                status: 'btn-secondary fa-circle',
-                statusDescription: 'Pytanie prywatne',
-                text: 'Question2',
-                user: 1
-            }],
-            isAdmin: false,
-            title: 'Pytania'
-        };
-
-        assert.calledOnceWithExactly(res.render, 'question/index', sinon.match.any);
-        assert.calledOnceWithExactly(usersStub, [1]);
-        assert.calledOnceWithExactly(questionStub, 1);
-        assert.calledOnceWithExactly(answerStub, [1, 2]);
-        assert.calledOnceWithExactly(categoriesStub, [1, 2]);
+        assert.calledOnce(res.render);
     });
 
-    it('edit: should show question with id owned by user', async () => {
-        const req = { params: { id: 1 }, session: { userId: 1, isAdmin: false } };
-        const res = { render: sinon.spy() };
+    it('generate: should generate new quiz for user', async () => {
+        const req = { session: { userId: 1, isAdmin: false }, query: {}, body: { categories: [1, 2] } };
+        const res = { json: sinon.spy() };
 
-        const questionStub = sinon.stub(QuestionModel, 'getById').resolves(mock.questions[0]);
-        const answerStub = sinon.stub(AnswerModel, 'getByQuestionId').resolves(mock.answers.slice(0, 4) as any); // TODO: Fix any type (Answer)
-        const categoriesStub = sinon.stub(CategoryModel, 'getTree').resolves(categoriesMock.categoryTree as any); // TODO: Fix any type (Answer)
+        sinon.stub(QuestionModel, 'getRandomPublic');
 
-        await questionController.edit(req as any, res as any);
+        try {
+            await generatedQuizController.generate(req as any, res as any);
+            // eslint-disable-next-line no-empty
+        } catch (e) {
 
-        const expectedResult = {
-            title: 'Pytanie',
-            maxQuestionLength: 300,
-            question: mock.questions[0],
-            answers: mock.answers.slice(0, 4),
-            categoriesTree: categoriesMock.categoryTree,
-            selected: 1,
-            isAdmin: false,
-            isPublicCandidate: true,
-            isPending: false,
-            isPrivate: true,
-            isPublic: false
-        };
-
-        assert.calledOnceWithExactly(res.render, 'question/createEdit', sinon.match.any);
-        assert.calledOnceWithExactly(questionStub, req.params.id);
-        assert.calledOnceWithExactly(answerStub, req.params.id);
-        // assert.calledOnce(categoriesStub);
+        }
     });
 
-    it('edit: should get 404 for question with non-existing id', async () => {
-        const req = { params: { id: 1 }, session: { userId: 1 } };
-        const res = {
-            render: sinon.stub(),
-            status: sinon.stub().returnsThis(),
-            send: sinon.spy()
-        };
+    it('generate: should not generate new quiz for user if length not number', async () => {
+        const req = { session: { userId: 1, isAdmin: false }, query: {}, body: { questionCount: NaN } };
+        const res = { redirect: sinon.spy() };
 
-        const questionStub = sinon.stub(QuestionModel, 'getById').resolves(undefined);
-        const answerStub = sinon.stub(AnswerModel, 'getByQuestionId').resolves(undefined);
+        sinon.stub(QuestionModel, 'getRandomPublic').resolves([]);
 
-        await questionController.edit(req as any, res as any);
-
-        assert.calledOnceWithExactly(questionStub, req.params.id);
-        assert.neverCalledWith(answerStub, req.params.id);
-        assert.calledOnceWithExactly(res.status, 404);
-        assert.calledOnce(res.send);
+        await generatedQuizController.generate(req as any, res as any);
     });
 
     it('edit: should get 404 for question not created by logged user', async () => {
@@ -172,7 +103,6 @@ describe('Question Controller', () => {
         const questionsCallCount = mock.questionsParseData.length;
         const answersCallCount = mock.answersParseData.length;
 
-        const categoryStub = sinon.stub(categoriesController, 'getOrCreatePrivate').resolves({ id: 1, name: 'a', description: 'ab' });
         const questionStub = sinon.stub(QuestionModel, 'insert');
         const answerStub = sinon.stub(AnswerModel, 'insert');
         for (let i = 0; i < questionsCallCount; i++) {
